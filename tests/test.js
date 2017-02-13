@@ -9,7 +9,7 @@ var c = service.getCaptcha({nonce: resourceID});
 console.log("validation:", c.validation);
 
 var fs = require('fs');
-fs.writeFile("./test.html", c.captcha, function(err) {
+fs.writeFile(__dirname + "/test.html", c.captcha, function(err) {
 	if(err) {
 		return console.log(err);
 	}
@@ -25,6 +25,8 @@ const rl = readline.createInterface({
 });
 
 rl.question('What is the answer to the captcha?', (answer) => {
+	rl.close();
+
 	var payload = {nonce: resourceID, encryptedAnswer: c.validation, answer: answer};
 	console.log("payload:", payload);
 	var signedJWT = service.verifyCaptcha(payload);
@@ -33,10 +35,10 @@ rl.question('What is the answer to the captcha?', (answer) => {
 	var verified = service.verifyJWT(signedJWT, resourceID);
 	if (verified && verified.valid == true) {
 		console.log("Client Verified!");
+		process.exit();
 	} else {
 		console.log("Client Failed.");
+		process.exit(1);
 	}
-
-	rl.close();
 });
 
