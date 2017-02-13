@@ -6,14 +6,24 @@ var path = require('path').basename(__dirname);
 
 var resourceID = crypto.randomBytes(64).toString('hex');
 var c = service.getCaptcha({nonce: resourceID});
-console.log("validation:", c.validation);
+
+if (!c.captcha) {
+	console.log("Captcha was not generated.");
+	process.exit(1);
+}
+if (!c.validation) {
+	console.log("Encrypted answer not found.");
+	process.exit(1);
+}
+// console.log("validation:", c.validation);
 
 var fs = require('fs');
 fs.writeFile(__dirname + "/test.html", c.captcha, function(err) {
 	if(err) {
-		return console.log(err);
+		console.log("could not write to filesystem:", err);
+		process.exit(1);
 	}
-	console.log("The file was saved!", __dirname);
+	// console.log("The file was saved!", __dirname);
 	open("file:///" + __dirname + "\\" + "test.html");
 });
 
@@ -28,9 +38,13 @@ rl.question('What is the answer to the captcha?', (answer) => {
 	rl.close();
 
 	var payload = {nonce: resourceID, encryptedAnswer: c.validation, answer: answer};
-	console.log("payload:", payload);
+	// console.log("payload:", payload);
 	var signedJWT = service.verifyCaptcha(payload);
-	console.log("JWT:", signedJWT);
+	if (signedJWT && signedJWT.valid == false) {
+		console.log("Captcha answer was wrong.");
+		process.exit(1);
+	}
+	// console.log("JWT:", signedJWT);
 
 	var verified = service.verifyJWT(signedJWT, resourceID);
 	if (verified && verified.valid == true) {

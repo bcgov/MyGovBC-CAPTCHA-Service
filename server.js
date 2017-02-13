@@ -36,17 +36,23 @@ function decrypt(password, private_key) {
 		dec += decipher.final('utf8');
 		return dec;
 	} catch (e) {
+		console.log("Error in cipher:", e);
 		return "";
 	}
 }
 function encrypt(password, private_key) {
-	if (!private_key) {
-		private_key = PRIVATE_KEY;
+	try {
+		if (!private_key) {
+			private_key = PRIVATE_KEY;
+		}
+		var cipher = crypto.createCipher(algorithm, private_key);
+		var crypted = cipher.update(password, 'utf8', 'hex');
+		crypted += cipher.final('hex');
+		return crypted;
+	} catch (e) {
+		console.log("Error in cipher:", e);
+		return "";
 	}
-	var cipher = crypto.createCipher(algorithm, private_key);
-	var crypted = cipher.update(password, 'utf8', 'hex');
-	crypted += cipher.final('hex');
-	return crypted;
 }
 
 
@@ -56,18 +62,28 @@ function encrypt(password, private_key) {
  */
 ////////////////////////////////////////////////////////
 var getCaptcha = function (payload) {
-	console.log("getCaptcha:", payload.nonce);
+	// console.log("getCaptcha:", payload.nonce);
 	var captcha = svgCaptcha.create();
+	if (!captcha || (captcha && !captcha.data)) {
+		// Something bad happened with Captcha.
+		return {valid: false};
+	}
+	// Leaving this open until debugging finished.
 	console.log("captcha generated:", captcha.text);
 	var validation = encrypt(payload.nonce, SALT+captcha.text);
-	console.log("validation:", validation);
-	return {nonce: payload.nonce, captcha: captcha.data, validation: validation};
+	if (validation == "") {
+		// Error
+		return {valid: false};
+	} else {
+		console.log("validation:", validation);
+		return {nonce: payload.nonce, captcha: captcha.data, validation: validation};
+	}
 };
 exports.getCaptcha = getCaptcha;
 
 app.post('/captcha', function (req, res) {
 	var captcha = getCaptcha(req.body);
-	console.log("returing:", captcha);
+	// console.log("returing:", captcha);
 
 	return res.send(captcha);
 });
@@ -80,22 +96,22 @@ app.post('/captcha', function (req, res) {
  */
 ////////////////////////////////////////////////////////
 var verifyCaptcha = function (payload) {
-	console.log("incoming payload:", payload);
+	// console.log("incoming payload:", payload);
 	var encryptedAnswer = payload.encryptedAnswer;
 	var answer = payload.answer;
 	var nonce = payload.nonce;
-	console.log("encryptedAnswer:", encryptedAnswer);
-	console.log("answer:", answer);
+	// console.log("encryptedAnswer:", encryptedAnswer);
+	// console.log("answer:", answer);
 	var validation = decrypt(encryptedAnswer, SALT+answer)
-	console.log("decrypted:", validation);
+	// console.log("decrypted:", validation);
 	if (validation == nonce) {
 		// Passed the captcha test
-		console.log("Captcha verified!");
+		console.log("Captcha verified! Creating JWT.");
 		var token = jwt.sign({nonce: nonce}, SECRET);
 		return token;
 	} else {
 		console.log("Captcha answer invalid!");
-		return {};
+		return {valid: false};
 	}
 };
 exports.verifyCaptcha = verifyCaptcha;
@@ -113,9 +129,10 @@ app.post('/verify/captcha', function (req, res) {
 ////////////////////////////////////////////////////////
 var verifyJWT = function (token, nonce) {
 	try {
+		// Leaving this open until debugging finished.
 		console.log("verifying:", token, " against: ", nonce);
 		var decoded = jwt.verify(token, SECRET);
-		console.log("decoded:", decoded);
+		// console.log("decoded:", decoded);
 		if (decoded.nonce === nonce) {
 			console.log("Valid!");
 			return {valid: true};
