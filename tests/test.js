@@ -1,3 +1,4 @@
+/*jshint node:true, esversion: 6 */
 var service = require ('mygovbc-captcha-widget');
 var jwt = require('jsonwebtoken');
 var crypto = require('crypto');
@@ -40,14 +41,14 @@ rl.question('What is the answer to the captcha?', (answer) => {
 	var payload = {nonce: resourceID, encryptedAnswer: c.validation, answer: answer};
 	// console.log("payload:", payload);
 	var signedJWT = service.verifyCaptcha(payload);
-	if (signedJWT && signedJWT.valid == false) {
+	if (signedJWT && signedJWT.valid === false) {
 		console.log("Captcha answer was wrong.");
 		process.exit(1);
 	}
 	// console.log("JWT:", signedJWT);
 
 	var verified = service.verifyJWT(signedJWT, resourceID);
-	if (verified && verified.valid == true) {
+	if (verified && verified.valid === true) {
 		console.log("Client Verified!");
 		process.exit();
 	} else {

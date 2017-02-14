@@ -1,3 +1,4 @@
+/*jshint node:true */
 'use strict';
 
 var bodyParser  	= require('body-parser');
@@ -71,7 +72,7 @@ var getCaptcha = function (payload) {
 	// Leaving this open until debugging finished.
 	console.log("captcha generated:", captcha.text);
 	var validation = encrypt(payload.nonce, SALT+captcha.text);
-	if (validation == "") {
+	if (validation === "") {
 		// Error
 		return {valid: false};
 	} else {
@@ -102,7 +103,7 @@ var verifyCaptcha = function (payload) {
 	var nonce = payload.nonce;
 	// console.log("encryptedAnswer:", encryptedAnswer);
 	// console.log("answer:", answer);
-	var validation = decrypt(encryptedAnswer, SALT+answer)
+	var validation = decrypt(encryptedAnswer, SALT+answer);
 	// console.log("decrypted:", validation);
 	if (validation == nonce) {
 		// Passed the captcha test
