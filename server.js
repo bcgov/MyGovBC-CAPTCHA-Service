@@ -1,4 +1,4 @@
-/*jshint node:true */
+/*jshint node:true, esversion: 6 */
 'use strict';
 
 var bodyParser  	= require('body-parser');
@@ -10,7 +10,28 @@ var algorithm 		= 'aes-256-ctr';
 var SECRET      	= process.env.SECRET || "defaultSecret";
 var SALT      		= process.env.SALT || "defaultSalt";
 var PRIVATE_KEY 	= process.env.PRIVATE_KEY || "defaultPrivateKey";
+var LOG_LEVEL		= process.env.LOG_LEVEL || "error";
 
+////////////////////////////////////////////////////////
+/*
+ * Logger
+ */
+////////////////////////////////////////////////////////
+function logger(obj, level) {
+	if (LOG_LEVEL === "none") {
+		return;
+	} else if (level === "error" && (LOG_LEVEL === "error" || LOG_LEVEL === "debug")) {
+		console.error(new Error(obj));
+	} else if (level === "debug" && LOG_LEVEL === "debug") {
+		console.log(obj);
+	}
+}
+
+////////////////////////////////////////////////////////
+/*
+ * App Startup
+ */
+////////////////////////////////////////////////////////
 app.use(bodyParser.json());
 
 var args = process.argv;
@@ -18,7 +39,8 @@ if (args.length == 3 && args[2] == 'server') {
 	var server = app.listen(3000, 'localhost', function () {
 		var host = server.address().address;
 		var port = server.address().port;
-		console.log("MyGov Captcha Service listening at http://%s:%s", host, port);
+		console.warn(`MyGov Captcha Service listening at http://${host}:${port}`);
+		console.warn(`Log level is at: ${LOG_LEVEL}`);
 	});
 }
 
@@ -37,7 +59,7 @@ function decrypt(password, private_key) {
 		dec += decipher.final('utf8');
 		return dec;
 	} catch (e) {
-		console.log("Error in cipher:", e);
+		logger(`Error in cipher ${e}`, "error");
 		return "";
 	}
 }
@@ -51,7 +73,7 @@ function encrypt(password, private_key) {
 		crypted += cipher.final('hex');
 		return crypted;
 	} catch (e) {
-		console.log("Error in cipher:", e);
+		logger(`Error in cipher ${e}`, "error");
 		return "";
 	}
 }
@@ -63,20 +85,21 @@ function encrypt(password, private_key) {
  */
 ////////////////////////////////////////////////////////
 var getCaptcha = function (payload) {
-	// console.log("getCaptcha:", payload.nonce);
+	logger(`getCaptcha: ${payload.nonce}`, "debug");
 	var captcha = svgCaptcha.create();
 	if (!captcha || (captcha && !captcha.data)) {
 		// Something bad happened with Captcha.
 		return {valid: false};
 	}
-	// Leaving this open until debugging finished.
-	console.log("captcha generated:", captcha.text);
+	logger(`captcha generated: ${captcha.text}`, "debug");
+
 	var validation = encrypt(payload.nonce, SALT+captcha.text);
 	if (validation === "") {
 		// Error
+		logger(`Validation Failed`, "error");
 		return {valid: false};
 	} else {
-		console.log("validation:", validation);
+		logger(`validation: ${validation}`, "debug");
 		return {nonce: payload.nonce, captcha: captcha.data, validation: validation};
 	}
 };
@@ -84,7 +107,7 @@ exports.getCaptcha = getCaptcha;
 
 app.post('/captcha', function (req, res) {
 	var captcha = getCaptcha(req.body);
-	// console.log("returing:", captcha);
+	logger(`returing: ${captcha}`, "debug");
 
 	return res.send(captcha);
 });
@@ -97,21 +120,25 @@ app.post('/captcha', function (req, res) {
  */
 ////////////////////////////////////////////////////////
 var verifyCaptcha = function (payload) {
-	// console.log("incoming payload:", payload);
+	logger(`incoming payload: ${payload}`, "debug");
+
 	var encryptedAnswer = payload.encryptedAnswer;
 	var answer = payload.answer;
 	var nonce = payload.nonce;
-	// console.log("encryptedAnswer:", encryptedAnswer);
-	// console.log("answer:", answer);
+	logger(`encryptedAnswer: ${encryptedAnswer}`, "debug");
+	logger(`answer: ${answer}`, "debug");
+
 	var validation = decrypt(encryptedAnswer, SALT+answer);
-	// console.log("decrypted:", validation);
+	logger(`decrypted: ${validation}`, "debug");
+
 	if (validation == nonce) {
 		// Passed the captcha test
-		console.log("Captcha verified! Creating JWT.");
+		logger(`Captcha verified! Creating JWT.`, "debug");
+
 		var token = jwt.sign({nonce: nonce}, SECRET);
 		return token;
 	} else {
-		console.log("Captcha answer invalid!");
+		logger(`Captcha answer invalid!`, "error");
 		return {valid: false};
 	}
 };
@@ -130,19 +157,20 @@ app.post('/verify/captcha', function (req, res) {
 ////////////////////////////////////////////////////////
 var verifyJWT = function (token, nonce) {
 	try {
-		// Leaving this open until debugging finished.
-		console.log("verifying:", token, " against: ", nonce);
+		logger(`verifying: ${token} against ${nonce}`, "debug");
+
 		var decoded = jwt.verify(token, SECRET);
-		// console.log("decoded:", decoded);
+		logger(`decoded: ${decoded}`, "debug");
+
 		if (decoded.nonce === nonce) {
-			console.log("Valid!");
+			logger(`Captcha Valid`, "debug");
 			return {valid: true};
 		} else {
-			console.log("Invalid!");
+			logger(`Captcha Invalid!`, "debug");
 			return {valid: false};
 		}
 	} catch (e) {
-		console.log("Token/ResourceID Verification Failed:");
+		logger(`Token/ResourceID Verification Failed: ${e}`, "error");
 		return {valid: false};
 	}
 };

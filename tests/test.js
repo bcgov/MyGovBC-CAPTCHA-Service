@@ -1,4 +1,6 @@
 /*jshint node:true, esversion: 6 */
+'use strict';
+
 var service = require ('mygovbc-captcha-widget');
 var jwt = require('jsonwebtoken');
 var crypto = require('crypto');
