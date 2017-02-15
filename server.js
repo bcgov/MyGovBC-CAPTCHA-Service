@@ -11,6 +11,7 @@ var SECRET      	= process.env.SECRET || "defaultSecret";
 var SALT      		= process.env.SALT || "defaultSalt";
 var PRIVATE_KEY 	= process.env.PRIVATE_KEY || "defaultPrivateKey";
 var LOG_LEVEL		= process.env.LOG_LEVEL || "error";
+var SERVICE_PORT 	= process.env.SERVICE_PORT || 3000;
 
 ////////////////////////////////////////////////////////
 /*
@@ -36,7 +37,7 @@ app.use(bodyParser.json());
 
 var args = process.argv;
 if (args.length == 3 && args[2] == 'server') {
-	var server = app.listen(3000, 'localhost', function () {
+	var server = app.listen(SERVICE_PORT, 'localhost', function () {
 		var host = server.address().address;
 		var port = server.address().port;
 		console.warn(`MyGov Captcha Service listening at http://${host}:${port}`);
