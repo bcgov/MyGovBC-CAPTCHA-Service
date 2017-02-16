@@ -1,15 +1,24 @@
 /*jshint node:true, esversion: 6 */
 'use strict';
 
-var service = require ('mygovbc-captcha-widget');
-var jwt = require('jsonwebtoken');
-var crypto = require('crypto');
-var open = require('open');
-var path = require('path').basename(__dirname);
+var service 	= require ('mygovbc-captcha-widget');
+var jwt 		= require('jsonwebtoken');
+var crypto 		= require('crypto');
+var open 		= require('open');
+var path 		= require('path').basename(__dirname);
 
-var resourceID = crypto.randomBytes(64).toString('hex');
+var resourceID 	= crypto.randomBytes(64).toString('hex');
+
+// Fail because no nonce passed in.
+var t2 = service.getCaptcha({});
+if (t2 && !t2.valid) {
+	console.log("unit test success.");
+} else {
+	console.log("unit test failed.");
+	process.exit(1);
+}
+
 var c = service.getCaptcha({nonce: resourceID});
-
 if (!c.captcha) {
 	console.log("Captcha was not generated.");
 	process.exit(1);
@@ -18,17 +27,23 @@ if (!c.validation) {
 	console.log("Encrypted answer not found.");
 	process.exit(1);
 }
-// console.log("validation:", c.validation);
 
+// Success on normal case
+if (c.captcha) {
+	console.log("unit test success.");
+} else {
+	console.log("unit test failed.");
+	process.exit(1);
+}
 var fs = require('fs');
-fs.writeFile(__dirname + "/test.html", c.captcha, function(err) {
-	if(err) {
-		console.log("could not write to filesystem:", err);
-		process.exit(1);
-	}
-	// console.log("The file was saved!", __dirname);
+fs.writeFileSync(__dirname + "/test.html", c.captcha);
+
+var os = require('os');
+if (os.platform() === 'win32') {
 	open("file:///" + __dirname + "\\" + "test.html");
-});
+} else {
+	open(__dirname + "/" + "test.html");
+}
 
 const readline = require('readline');
 
