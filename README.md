@@ -28,6 +28,12 @@ The following is a list of the environment variables:
     > What port you want the service to run on, defaults to 3000.
 
 
+###### Preparing for dependencies:
+```
+npm install
+```
+This will download  all the required dependencies for the project so that npm start/npm test will work.
+
 ###### Running the service:
 ```
 npm start
