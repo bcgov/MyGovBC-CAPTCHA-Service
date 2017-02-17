@@ -34,6 +34,11 @@ function logger(obj, level) {
  */
 ////////////////////////////////////////////////////////
 app.use(bodyParser.json());
+app.use(function(req, res, next) {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  next();
+});
 
 var args = process.argv;
 if (args.length == 3 && args[2] == 'server') {
@@ -108,7 +113,7 @@ exports.getCaptcha = getCaptcha;
 
 app.post('/captcha', function (req, res) {
 	var captcha = getCaptcha(req.body);
-	logger(`returing: ${captcha}`, "debug");
+	logger(`returning: ${captcha}`, "debug");
 
 	return res.send(captcha);
 });
