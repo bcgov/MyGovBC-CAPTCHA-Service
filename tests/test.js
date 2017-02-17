@@ -64,7 +64,7 @@ rl.question('What is the answer to the captcha?', (answer) => {
 	}
 	// console.log("JWT:", signedJWT);
 
-	var verified = service.verifyJWT(signedJWT, resourceID);
+	var verified = service.verifyJWT(signedJWT.jwt, resourceID);
 	if (verified && verified.valid === true) {
 		console.log("Client Verified!");
 		process.exit();

@@ -1,0 +1,42 @@
+<html>
+<body>
+<h1 class="form-group">
+  <div >{{title}}</div>
+</h1>
+<br>
+<div class="container">
+	<div class="form-group row">
+		<div class="col-sm-4">
+			<label>Captcha Image:</label><div #captcha></div>
+			<button class="btn btn-success" (click)="getNewCaptcha()">Refresh</button>
+		</div>
+	</div>	
+</div>
+<div class="container">
+<form (ngSubmit)="onSubmit()">
+	<div class="form-group row">
+		<div class="col-sm-4">
+			<label for="answer">Enter The Text You See Above:</label>
+			<input 
+				type="text"
+				class="form-control"
+				id="answer"
+				[(ngModel)]="answer"
+				name="answer"
+				required>
+		</div>
+	</div>
+	<div class="form-group">
+		<button type="submit" class="btn btn-success">Submit</button>
+	</div>
+</form>
+<div class="form-group row">
+	<div *ngIf="captchaValid != null && captchaValid != false" class="col-sm-4 glyphicon glyphicon-ok"> Correct!</div>
+	<div *ngIf="captchaValid == false" class="col-sm-4 glyphicon glyphicon-remove"> Incorrect Answer!</div>
+</div>
+	<div *ngIf="jwt">
+		Your JWT is: <code>{{jwt}}</code>
+	</div>
+</div>
+</body>
+</html>

@@ -137,7 +137,7 @@ var verifyCaptcha = function (payload) {
 		logger(`Captcha verified! Creating JWT.`, "debug");
 
 		var token = jwt.sign({nonce: nonce}, SECRET);
-		return token;
+		return { valid: true, jwt: token };
 	} else {
 		logger(`Captcha answer invalid!`, "error");
 		return {valid: false};
