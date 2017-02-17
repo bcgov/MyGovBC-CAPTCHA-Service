@@ -37,7 +37,7 @@ app.use(bodyParser.json());
 
 var args = process.argv;
 if (args.length == 3 && args[2] == 'server') {
-	var server = app.listen(SERVICE_PORT, 'localhost', function () {
+	var server = app.listen(SERVICE_PORT, '0.0.0.0', function () {
 		var host = server.address().address;
 		var port = server.address().port;
 		console.warn(`MyGov Captcha Service listening at http://${host}:${port}`);
