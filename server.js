@@ -41,6 +41,7 @@ if (args.length == 3 && args[2] == 'server') {
 		var host = server.address().address;
 		var port = server.address().port;
 		console.warn(`MyGov Captcha Service listening at http://${host}:${port}`);
+		console.warn('FIPS Mode: ' + crypto.fips);
 		console.warn(`Log level is at: ${LOG_LEVEL}`);
 	});
 }
