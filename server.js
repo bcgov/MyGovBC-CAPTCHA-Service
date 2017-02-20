@@ -8,7 +8,6 @@ var Buffer 			= require('buffer').Buffer;
 var app 			= require('express')();
 var jwt 			= require('jsonwebtoken');
 var svgCaptcha 		= require('svg-captcha');
-var algorithm 		= 'aes-256-ctr';
 var SECRET 			= process.env.SECRET || "defaultSecret";
 var SALT 			= process.env.SALT || "defaultSalt";
 var PRIVATE_KEY 	= process.env.PRIVATE_KEY || { kty: 'oct', kid: 'gBdaS-G8RLax2qObTD94w', use: 'enc', alg: 'A256GCM', k: 'FK3d8WvSRdxlUHs4Fs_xxYO3-6dCiUarBwiYNFw5hv8' };
@@ -44,7 +43,7 @@ app.use(bodyParser.json());
 
 var args = process.argv;
 if (args.length == 3 && args[2] == 'server') {
-	var server = app.listen(SERVICE_PORT, 'localhost', function () {
+	var server = app.listen(SERVICE_PORT, '0.0.0.0', function () {
 		var host = server.address().address;
 		var port = server.address().port;
 		console.warn(`MyGov Captcha Service listening at http://${host}:${port}`);
