@@ -35,11 +35,6 @@ function logger(obj, level) {
  */
 ////////////////////////////////////////////////////////
 app.use(bodyParser.json());
-// app.use(function(req, res, next) {
-// 	res.header("Access-Control-Allow-Origin", "*");
-// 	res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-// 	next();
-// });
 
 var args = process.argv;
 if (args.length == 3 && args[2] == 'server') {
@@ -47,6 +42,7 @@ if (args.length == 3 && args[2] == 'server') {
 		var host = server.address().address;
 		var port = server.address().port;
 		console.warn(`MyGov Captcha Service listening at http://${host}:${port}`);
+		console.warn('FIPS Mode: ' + crypto.fips);
 		console.warn(`Log level is at: ${LOG_LEVEL}`);
 	});
 	}
