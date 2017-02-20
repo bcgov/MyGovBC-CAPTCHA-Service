@@ -104,7 +104,7 @@ var getCaptcha = function (payload) {
 		}
 		logger(`captcha generated: ${captcha.text}`, "debug");
 
-		encrypt(payload.nonce, PRIVATE_KEY)
+		encrypt(captcha.text, PRIVATE_KEY)
 		.then(function (validation) {
 			if (validation === "") {
 				// Error
@@ -148,7 +148,7 @@ var verifyCaptcha = function (payload) {
 		decrypt(validation, PRIVATE_KEY)
 		.then(function (obj) {
 			logger(`verifyCaptcha decrypted: ${obj}`, "debug");
-			if (obj === nonce) {
+			if (obj === answer) {
 				// Passed the captcha test
 				logger(`Captcha verified! Creating JWT.`, "debug");
 
