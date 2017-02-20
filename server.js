@@ -12,6 +12,16 @@ var PRIVATE_KEY 	= process.env.PRIVATE_KEY || { kty: 'oct', kid: 'gBdaS-G8RLax2q
 var LOG_LEVEL		= process.env.LOG_LEVEL || "error";
 var SERVICE_PORT 	= process.env.SERVICE_PORT || 3000;
 
+// Prevent default keys going into production
+if (process.env.NODE_ENV == 'production') {
+	if (SECRET == 'defaultSecret' ||
+		PRIVATE_KEY.kid == 'gBdaS-G8RLax2qObTD94w') {
+
+		console.log("You MUST change SECRET and PRIVATE_KEY before running in a production environment.")
+		process.exit(1);
+	}
+}
+
 ////////////////////////////////////////////////////////
 /*
  * Logger
