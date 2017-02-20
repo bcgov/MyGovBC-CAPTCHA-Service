@@ -192,3 +192,7 @@ exports.verifyJWT = verifyJWT;
 app.post('/verify/jwt', function (req, res) {
 	res.send(verifyJWT(req.body.token, req.body.nonce));
 });
+
+app.get('/status', function (req, res) {
+    res.send("OK");
+});
