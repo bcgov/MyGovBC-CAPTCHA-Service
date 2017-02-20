@@ -2,16 +2,16 @@
 'use strict';
 
 var bodyParser  	= require('body-parser');
-var crypto      	= require('crypto');
-var app         	= require('express')();
-var jwt         	= require('jsonwebtoken');
-var svgCaptcha  	= require('svg-captcha');
-var algorithm 		= 'aes256';
-var SECRET      	= process.env.SECRET || "defaultSecret";
-var IV      	= process.env.IV || "defaultIV";
-var SALT      		= process.env.SALT || "defaultSalt";
-var PRIVATE_KEY 	= process.env.PRIVATE_KEY || "defaultPrivateKey";
-var LOG_LEVEL		= process.env.LOG_LEVEL || "debug";
+var jose 			= require('node-jose');
+var keystore 		= jose.JWK.createKeyStore();
+var Buffer 			= require('buffer').Buffer;
+var app 			= require('express')();
+var jwt 			= require('jsonwebtoken');
+var svgCaptcha 		= require('svg-captcha');
+var SECRET 			= process.env.SECRET || "defaultSecret";
+var SALT 			= process.env.SALT || "defaultSalt";
+var PRIVATE_KEY 	= process.env.PRIVATE_KEY || { kty: 'oct', kid: 'gBdaS-G8RLax2qObTD94w', use: 'enc', alg: 'A256GCM', k: 'FK3d8WvSRdxlUHs4Fs_xxYO3-6dCiUarBwiYNFw5hv8' };
+var LOG_LEVEL		= process.env.LOG_LEVEL || "error";
 var SERVICE_PORT 	= process.env.SERVICE_PORT || 3000;
 
 ////////////////////////////////////////////////////////
@@ -45,7 +45,7 @@ if (args.length == 3 && args[2] == 'server') {
 		console.warn('FIPS Mode: ' + crypto.fips);
 		console.warn(`Log level is at: ${LOG_LEVEL}`);
 	});
-}
+	}
 
 ////////////////////////////////////////////////////////
 /*
@@ -53,34 +53,40 @@ if (args.length == 3 && args[2] == 'server') {
  */
 ////////////////////////////////////////////////////////
 function decrypt(password, private_key) {
-	try {
-		if (!private_key) {
-			private_key = PRIVATE_KEY;
+	return new Promise(function (resolve, reject) {
+		logger(`decrypt: ${password}`, "debug");
+		try {
+			jose.JWK.asKey(private_key, "json")
+			.then(function (res) {
+				jose.JWE.createDecrypt(res)
+				.decrypt(password)
+				.then(function (decrypted) {
+					logger(`decrypt: ${decrypted.plaintext.toString('utf8')}`, "debug");
+					resolve(decrypted.plaintext.toString('utf8'));
+				});
+			});
+		} catch (e) {
+			logger(`err: ${e}`, "error");
 		}
-		var decipher = crypto.createDecipheriv(algorithm, private_key, IV);
-		var dec = decipher.update(password, 'hex', 'utf8');
-		dec += decipher.final('utf8');
-		return dec;
-	} catch (e) {
-		logger(`Error in cipher ${e}`, "error");
-		return "";
-	}
+	});
 }
 function encrypt(password, private_key) {
-	try {
-		if (!private_key) {
-			private_key = PRIVATE_KEY;
+	logger(`encrypt: ${password}`, "debug");
+	return new Promise(function (resolve, reject) {
+		var buff = Buffer.from(password, 'utf8');
+		try {
+			jose.JWE.createEncrypt(PRIVATE_KEY)
+			.update(buff)
+			.final()
+			.then(function (cr) {
+				logger(`encrypted: ${cr}`, "debug");
+				resolve(cr);
+			});
+		} catch (e) {
+			logger(`err: ${e}`, "error");
 		}
-		var cipher = crypto.createCipheriv(algorithm, private_key, IV);
-		var crypted = cipher.update(password, 'utf8', 'hex');
-		crypted += cipher.final('hex');
-		return crypted;
-	} catch (e) {
-		logger(`Error in cipher ${e}`, "error");
-		return "";
-	}
+	});
 }
-
 
 ////////////////////////////////////////////////////////
 /*
@@ -96,23 +102,26 @@ var getCaptcha = function (payload) {
 	}
 	logger(`captcha generated: ${captcha.text}`, "debug");
 
-	var validation = encrypt(payload.nonce, SALT+captcha.text);
-	if (validation === "") {
-		// Error
-		logger(`Validation Failed`, "error");
-		return {valid: false};
-	} else {
-		logger(`validation: ${validation}`, "debug");
-		return {nonce: payload.nonce, captcha: captcha.data, validation: validation};
-	}
+	return encrypt(payload.nonce, PRIVATE_KEY)
+	.then(function (validation) {
+		if (validation === "") {
+			// Error
+			logger(`Validation Failed`, "error");
+			return {valid: false};
+		} else {
+			logger(`validation: ${validation}`, "debug");
+			return {nonce: payload.nonce, captcha: captcha.data, validation: validation};
+		}
+	});
 };
 exports.getCaptcha = getCaptcha;
 
 app.post('/captcha', function (req, res) {
-	var captcha = getCaptcha(req.body);
-	logger(`returning: ${captcha}`, "debug");
-
-	return res.send(captcha);
+	getCaptcha(req.body)
+	.then(function (captcha) {
+		logger(`returning: ${captcha}`, "debug");
+		return res.send(captcha);
+	});
 });
 
 
@@ -124,32 +133,34 @@ app.post('/captcha', function (req, res) {
 ////////////////////////////////////////////////////////
 var verifyCaptcha = function (payload) {
 	logger(`incoming payload: ${payload}`, "debug");
-
-	var encryptedAnswer = payload.encryptedAnswer;
+	var validation = payload.validation;
 	var answer = payload.answer;
 	var nonce = payload.nonce;
-	logger(`encryptedAnswer: ${encryptedAnswer}`, "debug");
+	logger(`validation: ${validation}`, "debug");
 	logger(`answer: ${answer}`, "debug");
 
-	var validation = decrypt(encryptedAnswer, SALT+answer);
-	logger(`decrypted: ${validation}`, "debug");
+	return decrypt(validation, PRIVATE_KEY)
+	.then(function (obj) {
+		logger(`verifyCaptcha decrypted: ${obj}`, "debug");
+		if (obj === nonce) {
+			// Passed the captcha test
+			logger(`Captcha verified! Creating JWT.`, "debug");
 
-	if (validation == nonce) {
-		// Passed the captcha test
-		logger(`Captcha verified! Creating JWT.`, "debug");
-
-		var token = jwt.sign({nonce: nonce}, SECRET);
-		return { valid: true, jwt: token };
-	} else {
-		logger(`Captcha answer invalid!`, "error");
-		return {valid: false};
-	}
+			var token = jwt.sign({nonce: nonce}, SECRET);
+			return { valid: true, jwt: token };
+		} else {
+			logger(`Captcha answer invalid!`, "error");
+			return {valid: false};
+		}
+	});
 };
 exports.verifyCaptcha = verifyCaptcha;
 
 app.post('/verify/captcha', function (req, res) {
-	var ret = verifyCaptcha(req.body);
-	return res.send(ret);
+	verifyCaptcha(req.body)
+	.then(function (ret) {
+		return res.send(ret);
+	});
 });
 
 
