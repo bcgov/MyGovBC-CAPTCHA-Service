@@ -89,6 +89,9 @@ function encrypt(password, private_key) {
 			.then(function (cr) {
 				logger(`encrypted: ${cr}`, "debug");
 				resolve(cr);
+			}, function (e) {
+                logger(`err: ${e}`, "error");
+                reject(e);
 			});
 		} catch (e) {
 			logger(`err: ${e}`, "error");
@@ -123,6 +126,7 @@ var getCaptcha = function (payload) {
 				resolve({nonce: payload.nonce, captcha: captcha.data, validation: validation});
 			}
 		}, function (err) {
+            	logger(err, "error");
 				resolve({valid: false});
 		});
 	});
