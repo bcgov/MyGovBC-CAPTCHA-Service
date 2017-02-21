@@ -8,7 +8,8 @@ var app 			= require('express')();
 var jwt 			= require('jsonwebtoken');
 var svgCaptcha 		= require('svg-captcha');
 var SECRET 			= process.env.SECRET || "defaultSecret";
-var PRIVATE_KEY 	= process.env.PRIVATE_KEY || { kty: 'oct', kid: 'gBdaS-G8RLax2qObTD94w', use: 'enc', alg: 'A256GCM', k: 'FK3d8WvSRdxlUHs4Fs_xxYO3-6dCiUarBwiYNFw5hv8' };
+var PRIVATE_KEY 	= process.env.PRIVATE_KEY ? JSON.parse(process.env.PRIVATE_KEY)
+	: { kty: 'oct', kid: 'gBdaS-G8RLax2qObTD94w', use: 'enc', alg: 'A256GCM', k: 'FK3d8WvSRdxlUHs4Fs_xxYO3-6dCiUarBwiYNFw5hv8' };
 var LOG_LEVEL		= process.env.LOG_LEVEL || "error";
 var SERVICE_PORT 	= process.env.SERVICE_PORT || 3000;
 
