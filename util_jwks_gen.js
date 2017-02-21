@@ -9,5 +9,5 @@ var props = {
 keystore.generate("oct", 256, props).then(function(result) {
     // {result} is a jose.JWK.Key
     key = result;
-    console.log(key.toJSON(true));
+    console.log(JSON.stringify(key.toJSON(true)));
 });
