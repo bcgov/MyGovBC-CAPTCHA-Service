@@ -81,13 +81,7 @@ function decrypt(password, private_key) {
 function encrypt(password, private_key) {
 	logger(`encrypt: ${password}`, "debug");
 	return new Promise(function (resolve, reject) {
-		var buff;
-        if (typeof Buffer.from === "function") {
-            buff = Buffer.from(password, 'utf8')
-        } else {
-            // older Node versions
-            buff = new Buffer(password, 'utf8');
-        }
+		var buff = new Buffer(password);
 		try {
 			jose.JWE.createEncrypt(PRIVATE_KEY)
 			.update(buff)
