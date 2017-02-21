@@ -59,7 +59,7 @@ service.getCaptcha({nonce: resourceID})
 	rl.question('What is the answer to the captcha?', (answer) => {
 		rl.close();
 
-		var payload = {nonce: resourceID, validation: c.validation, answer: answer};
+		var payload = {nonce: resourceID, validation: c.validation, answer: answer, expiry: c.expiry};
 		// console.log("payload:", payload);
 		service.verifyCaptcha(payload)
 		.then(function (signedJWT) {
