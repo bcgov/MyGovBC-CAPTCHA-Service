@@ -24,6 +24,13 @@ if (process.env.NODE_ENV == 'production') {
 		process.exit(1);
 	}
 }
+else {
+    app.use(function(req, res, next) {
+        res.header("Access-Control-Allow-Origin", "*");
+        res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+        next();
+    });
+}
 
 ////////////////////////////////////////////////////////
 /*
@@ -62,42 +69,44 @@ if (args.length == 3 && args[2] == 'server') {
  * Encryption Routines
  */
 ////////////////////////////////////////////////////////
-function decrypt(password, private_key) {
-	logger(`decrypt: ${password}`, "debug");
+function decrypt(body, private_key) {
+	logger(`to decrypt body: ` + JSON.stringify(body), "debug");
 	return new Promise(function (resolve, reject) {
 		try {
 			jose.JWK.asKey(private_key, "json")
 			.then(function (res) {
 				jose.JWE.createDecrypt(res)
-				.decrypt(password)
+				.decrypt(body)
 				.then(function (decrypted) {
-					logger(`decrypt: ${decrypted.plaintext.toString('utf8')}`, "debug");
-					resolve(decrypted.plaintext.toString('utf8'));
+					var decryptedObject = JSON.parse(decrypted.plaintext.toString('utf8'));
+					logger('decrypted object: ' + JSON.stringify(decryptedObject), "debug");
+					resolve(decryptedObject);
 				});
 			});
 		} catch (e) {
-			logger(`err: ${e}`, "error");
+			logger(`err: ` + JSON.stringify(e), "error");
 			reject(e);
 		}
 	});
 }
-function encrypt(password, private_key) {
-	logger(`encrypt: ${password}`, "debug");
+function encrypt(body) {
+	logger(`encrypt: ` + JSON.stringify(body), "debug");
 	return new Promise(function (resolve, reject) {
-		var buff = new Buffer(password);
+
+		var buff = new Buffer(JSON.stringify(body));
 		try {
 			jose.JWE.createEncrypt(PRIVATE_KEY)
 			.update(buff)
 			.final()
 			.then(function (cr) {
-				logger(`encrypted: ${cr}`, "debug");
+				logger(`encrypted: ` + JSON.stringify(cr), "debug");
 				resolve(cr);
 			}, function (e) {
-                logger(`err: ${e}`, "error");
+                logger(`err: ` + JSON.stringify(e), "error");
                 reject(e);
 			});
 		} catch (e) {
-			logger(`err: ${e}`, "error");
+			logger(`err: ` + JSON.stringify(e), "error");
 			reject(e);
 		}
 	});
@@ -118,14 +127,17 @@ var getCaptcha = function (payload) {
 		}
 		logger(`captcha generated: ${captcha.text}`, "debug");
 
-		encrypt(captcha.text, PRIVATE_KEY)
+        // add expiry to body
+		var body = {answer: captcha.text, expiry: Date.now() + (CAPTCHA_SIGN_EXPIRY * 60000)};
+
+        encrypt(body, PRIVATE_KEY)
 		.then(function (validation) {
 			if (validation === "") {
 				// Error
 				logger(`Validation Failed`, "error");
 				resolve({valid: false});
 			} else {
-				logger(`validation: ${validation}`, "debug");
+				logger(`validation: ` + JSON.stringify(validation), "debug");
 				// Create an expiring JWT
 				var expiry = jwt.sign({
 					data: {nonce: payload.nonce}
@@ -143,7 +155,7 @@ exports.getCaptcha = getCaptcha;
 app.post('/captcha', function (req, res) {
 	getCaptcha(req.body)
 	.then(function (captcha) {
-		logger(`returning: ${captcha}`, "debug");
+		logger(`returning: ` + JSON.stringify(captcha), "debug");
 		return res.send(captcha);
 	});
 });
@@ -156,40 +168,45 @@ app.post('/captcha', function (req, res) {
  */
 ////////////////////////////////////////////////////////
 var verifyCaptcha = function (payload) {
-	logger(`incoming payload: ${payload}`, "debug");
+	logger(`incoming payload: ` + JSON.stringify(payload), "debug");
 	return new Promise(function (resolve, reject) {
 		var validation = payload.validation;
 		var answer = payload.answer;
 		var nonce = payload.nonce;
-		var expiry = payload.expiry;
-		logger(`validation: ${validation}`, "debug");
-		logger(`answer: ${answer}`, "debug");
-
-		try {
-			var decoded = jwt.verify(expiry, SECRET);
-			logger(`decoded: ${decoded}`, "debug");
-
-			if (decoded.data.nonce !== nonce) {
-				logger(`Captcha Invalid!`, "debug");
-				return resolve({valid: false});
-			}
-		} catch (e) {
-			return resolve({valid: false, message: e.message});
-		}
 
 		decrypt(validation, PRIVATE_KEY)
-		.then(function (obj) {
-			logger(`verifyCaptcha decrypted: ${obj}`, "debug");
-			if (obj === answer) {
-				// Passed the captcha test
-				logger(`Captcha verified! Creating JWT.`, "debug");
+		.then(function (body) {
+			logger(`verifyCaptcha decrypted: ` + JSON.stringify(body), "debug");
+			if (body != null) {
 
-				var token = jwt.sign({
-					data: {nonce: nonce}
-				}, SECRET, { expiresIn: JWT_SIGN_EXPIRY + 'm'});
-				resolve({ valid: true, jwt: token });
+				// Check answer
+				if (body.answer === answer) {
+
+					// Check expiry
+					if (body.expiry > Date.now()) {
+
+						// Passed the captcha test
+						logger(`Captcha verified! Creating JWT.`, "debug");
+
+						var token = jwt.sign({
+							data: {nonce: nonce}
+						}, SECRET, {expiresIn: JWT_SIGN_EXPIRY + 'm'});
+						resolve({valid: true, jwt: token});
+                    }
+                    else {
+                        // incorrect answer
+                        logger(`Captcha expired: ` + body.expiry + "; now: " + Date.now(), "debug");
+                        resolve({valid: false});
+					}
+                }
+                else {
+					// incorrect answer
+                    logger(`Captcha answer incorrect`, "debug");
+                    resolve({valid: false});
+				}
 			} else {
-				logger(`Captcha answer invalid!`, "error");
+				// Bad decyption
+				logger(`Captcha decryption failed`, "error");
 				resolve({valid: false});
 			}
 		});
@@ -216,7 +233,7 @@ var verifyJWT = function (token, answer) {
 		try {
 
 			var decoded = jwt.verify(token, SECRET);
-			logger(`decoded: ${decoded}`, "debug");
+			logger(`decoded: ` + JSON.stringify(decoded), "debug");
 
 			if (decoded.answer === answer) {
 				logger(`Captcha Valid`, "debug");
@@ -226,7 +243,7 @@ var verifyJWT = function (token, answer) {
 				resolve({valid: false});
 			}
 		} catch (e) {
-			logger(`Token/ResourceID Verification Failed: ${e}`, "error");
+			logger(`Token/ResourceID Verification Failed: ` + JSON.stringify(e), "error");
 			resolve({valid: false});
 		}
 	});
