@@ -75,8 +75,8 @@ if (args.length == 3 && args[2] == 'server') {
   var server = app.listen(SERVICE_PORT, '0.0.0.0', function () {
     var host = server.address().address;
     var port = server.address().port;
-    winston.warn(`MyGov Captcha Service listening at http://${host}:${port}`);
-    winston.warn(`Log level is at: ${LOG_LEVEL}`);
+    winston.info(`MyGov Captcha Service listening at http://${host}:${port}`);
+    winston.info(`Log level is at: ${LOG_LEVEL}`);
   });
 }
 
