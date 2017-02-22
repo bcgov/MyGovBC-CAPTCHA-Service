@@ -48,7 +48,7 @@ if (process.env.SYSLOG_PORT) {
   require('winston-syslog').Syslog
   winston.add(winston.transports.Syslog, {
     host: 'logstash',
-    port: process.env.LOGSTASH_PORT,
+    port: process.env.SYSLOG_PORT,
     protocol: 'udp4'
   })
 }
