@@ -2,7 +2,11 @@
 
 #### A CAPTCHA microservice
 
-This project contains a microservice to enable you to easily include a CAPTCHA widget in my online digital form to protect your digital service from bots.
+This project contains a microservice to enable you to easily include a CAPTCHA widget in my online digital form to protect your digital service from bots.  
+
+This is just the service part of an overall solution, for user interface components see:
+
+* https://github.com/bcgov/MyGovBC-CAPTCHA-Widget
 
 ###### Git Checkout and initialization:
 ```
