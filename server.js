@@ -137,7 +137,11 @@ function encrypt(body) {
 var getCaptcha = function (payload) {
   logger(`getCaptcha: ${payload.nonce}`, "debug");
   return new Promise(function (resolve, reject) {
-    var captcha = svgCaptcha.create();
+    var captcha = svgCaptcha.create({
+      size: 6, // size of random string
+      ignoreChars: '0o1i', // filter out some characters like 0o1i
+      noise: 2 // number of lines to insert for noise
+    });
     if (!captcha || (captcha && !captcha.data)) {
       // Something bad happened with Captcha.
       resolve({valid: false});
