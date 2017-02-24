@@ -8,6 +8,20 @@ This is just the service part of an overall solution, for user interface compone
 
 * https://github.com/bcgov/MyGovBC-CAPTCHA-Widget
 
+#### Overall System Use Case
+
+1. Client loads widget and a resource identifier (like a nonce)
+2. Widget executes and displays CAPTCHA challenge to user
+3. User responds to challenge
+4. Widget sends user response to Service
+5. Service verifies response
+6. Service returns signed JWT including the nonce
+7. Widget notifies Client of success/failure
+8. Client includes JWT in Resource API call
+9. Resource API confirms validity of the signed JWT
+10. Resource API match resource identifier in the path, query or request body, with resource identifier in the signed JWT
+11. Resource API allows/denies access to resource
+
 ###### Git Checkout and initialization:
 ```
 git clone git@github.com:bcgov/MyGovBC-CAPTCHA-Service.git
