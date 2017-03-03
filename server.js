@@ -35,7 +35,9 @@ if (process.env.NODE_ENV == 'production') {
     process.exit(1);
   }
 }
-else {
+
+if (process.env.NODE_ENV != 'production' ||
+    process.env.CORS_ALLOW_ALL == 'true') {
   app.use(function (req, res, next) {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
