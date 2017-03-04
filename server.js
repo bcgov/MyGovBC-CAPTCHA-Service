@@ -200,6 +200,21 @@ var verifyCaptcha = function (payload) {
     var answer = payload.answer;
     var nonce = payload.nonce;
 
+    // Captcha by-pass for automated testing in dev/test environments
+    if (process.env.BYPASS_ANSWER &&
+        process.env.BYPASS_ANSWER.length > 0 &&
+        process.env.BYPASS_ANSWER === answer) {
+
+        // Passed the captcha test
+        logger(`Captcha bypassed! Creating JWT.`, "debug");
+
+        var token = jwt.sign({
+            data: {nonce: nonce}
+        }, SECRET, {expiresIn: JWT_SIGN_EXPIRY + 'm'});
+        resolve({valid: true, jwt: token});
+    }
+
+    // Normal mode, decrypt token
     decrypt(validation, PRIVATE_KEY)
       .then(function (body) {
         logger(`verifyCaptcha decrypted: ` + JSON.stringify(body), "debug");
