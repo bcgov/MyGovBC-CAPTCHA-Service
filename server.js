@@ -50,6 +50,18 @@ if (process.env.NODE_ENV != 'production' ||
  * Logger
  */
 ////////////////////////////////////////////////////////
+
+/*
+ IMPORTANT: syslog only allows following log levels. Other levels will be ignored
+ debug
+ info
+ notice
+ warning
+ error
+ crit
+ alert
+ emerg
+*/
 if (process.env.SYSLOG_PORT) {
   require('winston-syslog').Syslog
   winston.add(winston.transports.Syslog, {
