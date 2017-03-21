@@ -50,13 +50,14 @@ if (process.env.NODE_ENV != 'production' ||
  * Logger
  */
 ////////////////////////////////////////////////////////
-if (process.env.WINSTON_PORT) {
+if (process.env.SYSLOG_PORT) {
+  require('winston-syslog').Syslog
   winston.add(winston.transports.Syslog, {
-    host: WINSTON_HOST,
-    port: WINSTON_PORT,
+    host: 'logstash',
+    port: process.env.SYSLOG_PORT,
     protocol: 'udp4',
     localhost: HOSTNAME
-  });
+  })
 }
 
 function logger(obj, level) {
