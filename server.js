@@ -234,7 +234,7 @@ var verifyCaptcha = function (payload) {
         if (body !== null) {
 
           // Check answer
-          if (body.answer === answer) {
+          if (body.answer.toLowerCase() === answer.toLowerCase()) {
 
             // Check expiry
             if (body.expiry > Date.now()) {
