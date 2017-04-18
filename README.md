@@ -85,3 +85,6 @@ HTTP GET | /status | | OK | Returns "OK" if the service is running
 HTTP POST | /captcha | request body: { nonce: string } | {  "nonce": string,  "captcha": string,  "validation": JSON,  "expiry": JWT}| Retrieve a captcha to be displayed to a user
 HTTP POST | /verify/captcha | request body: { nonce: string, answer: string, validation: JSON } | { valid: true/false, jwt: JWT } | Compare the answer to the encryptedAnswer, return a signed JWT if successful
 HTTP POST | /verify/jwt | request body: { nonce: string, token: JWT } | { valid: true/false } | Validate a signed JWT
+
+#### Production Setup
+See [Deploy to OpenShift](openshift/README.md) docs.
