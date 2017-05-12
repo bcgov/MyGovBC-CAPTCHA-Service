@@ -9,6 +9,14 @@ var jwt = require('jsonwebtoken');
 var svgCaptcha = require('svg-captcha');
 var winston = require('winston');
 
+// requires for audio support
+var lame = require('lame');
+var wav = require('wav');
+var meSpeak = require("mespeak");
+var streamifier = require("streamifier");
+var os = require("os");
+
+var LISTEN_IP = process.env.LISTEN_IP || '0.0.0.0';
 var HOSTNAME = require('os').hostname();
 var CAPTCHA_SIGN_EXPIRY = process.env.CAPTCHA_SIGN_EXPIRY || "15"; // In minutes
 var JWT_SIGN_EXPIRY = process.env.JWT_SIGN_EXPIRY || "15"; // In minutes
@@ -21,7 +29,7 @@ var PRIVATE_KEY = process.env.PRIVATE_KEY ? JSON.parse(process.env.PRIVATE_KEY)
     alg: 'A256GCM',
     k: 'FK3d8WvSRdxlUHs4Fs_xxYO3-6dCiUarBwiYNFw5hv8'
   };
-var LOG_LEVEL = process.env.LOG_LEVEL || "error";
+var LOG_LEVEL = process.env.LOG_LEVEL || "debug";
 var SERVICE_PORT = process.env.SERVICE_PORT || 3000;
 var WINSTON_HOST = process.env.WINSTON_HOST;
 var WINSTON_PORT = process.env.WINSTON_PORT;
@@ -45,41 +53,20 @@ if (process.env.NODE_ENV != 'production' ||
   });
 }
 
+
 ////////////////////////////////////////////////////////
 /*
  * Logger
  */
 ////////////////////////////////////////////////////////
-
-/*
- IMPORTANT: syslog only allows following log levels. Other levels will be ignored
- debug
- info
- notice
- warning
- error
- crit
- alert
- emerg
-*/
-if (process.env.SYSLOG_PORT) {
-  require('winston-syslog').Syslog
+winston.level = LOG_LEVEL;
+if (process.env.WINSTON_PORT) {
   winston.add(winston.transports.Syslog, {
-    host: 'logstash',
-    port: process.env.SYSLOG_PORT,
+    host: WINSTON_HOST,
+    port: WINSTON_PORT,
     protocol: 'udp4',
     localhost: HOSTNAME
-  })
-}
-
-function logger(obj, level) {
-  if (LOG_LEVEL === "none") {
-    return;
-  } else if (level === "error" && (LOG_LEVEL === "error" || LOG_LEVEL === "debug")) {
-    winston.log(level, new Error(obj));
-  } else if (level === "debug" && LOG_LEVEL === "debug") {
-    winston.log(level, obj);
-  }
+  });
 }
 
 ////////////////////////////////////////////////////////
@@ -87,11 +74,30 @@ function logger(obj, level) {
  * App Startup
  */
 ////////////////////////////////////////////////////////
+
+// Init audio settings
+meSpeak.loadConfig(require("mespeak/src/mespeak_config.json"));
+meSpeak.loadVoice(require("mespeak/voices/en/en-us.json"));
+
+// create the Encoder instance
+var encoder = new lame.Encoder({
+    // input
+    channels: 1,        // 1 channels
+    bitDepth: 16,       // 16-bit samples
+    sampleRate: 44100,  // 44,100 Hz sample rate
+
+    // output
+    bitRate: 128,
+    outSampleRate: 22050,
+    mode: lame.MONO // STEREO (default), JOINTSTEREO, DUALCHANNEL or MONO
+});
+
+// init app
 app.use(bodyParser.json());
 
 var args = process.argv;
 if (args.length == 3 && args[2] == 'server') {
-  var server = app.listen(SERVICE_PORT, '0.0.0.0', function () {
+  var server = app.listen(SERVICE_PORT, LISTEN_IP, function () {
     var host = server.address().address;
     var port = server.address().port;
     winston.info(`MyGov Captcha Service listening at http://${host}:${port}`);
@@ -114,18 +120,18 @@ function decrypt(body, private_key) {
             .decrypt(body)
             .then(function (decrypted) {
               var decryptedObject = JSON.parse(decrypted.plaintext.toString('utf8'));
-              logger('decrypted object: ' + JSON.stringify(decryptedObject), "debug");
+              winston.debug('decrypted object: ' + JSON.stringify(decryptedObject));
               resolve(decryptedObject);
             });
         });
     } catch (e) {
-      logger(`err: ` + JSON.stringify(e), "error");
+      winston.error(`err: ` + JSON.stringify(e));
       reject(e);
     }
   });
 }
 function encrypt(body) {
-  logger(`encrypt: ` + JSON.stringify(body), "debug");
+  winston.debug(`encrypt: ` + JSON.stringify(body));
   return new Promise(function (resolve, reject) {
 
     var buff = new Buffer(JSON.stringify(body));
@@ -134,14 +140,14 @@ function encrypt(body) {
         .update(buff)
         .final()
         .then(function (cr) {
-          logger(`encrypted: ` + JSON.stringify(cr), "debug");
+          winston.debug(`encrypted: ` + JSON.stringify(cr));
           resolve(cr);
         }, function (e) {
-          logger(`err: ` + JSON.stringify(e), "error");
+          winston.error(`err: ` + JSON.stringify(e));
           reject(e);
         });
     } catch (e) {
-      logger(`err: ` + JSON.stringify(e), "error");
+      winston.error(`err: ` + JSON.stringify(e));
       reject(e);
     }
   });
@@ -153,7 +159,8 @@ function encrypt(body) {
  */
 ////////////////////////////////////////////////////////
 var getCaptcha = function (payload) {
-  logger(`getCaptcha: ${payload.nonce}`, "debug");
+  winston.debug(`getCaptcha: ${payload.nonce}`);
+
   return new Promise(function (resolve, reject) {
     var captcha = svgCaptcha.create({
       size: 6, // size of random string
@@ -164,27 +171,36 @@ var getCaptcha = function (payload) {
       // Something bad happened with Captcha.
       resolve({valid: false});
     }
-    logger(`captcha generated: ${captcha.text}`, "debug");
+    winston.debug(`captcha generated: ${captcha.text}`);
 
-    // add expiry to body
+    // prep captcha string for good reading by putting spaces between letters
+    var captchaAudioText = "Type in the text box the following: " + captcha.text;
+
+    // add answer and expiry to body
     var body = {answer: captcha.text, expiry: Date.now() + (CAPTCHA_SIGN_EXPIRY * 60000)};
 
     encrypt(body, PRIVATE_KEY)
       .then(function (validation) {
         if (validation === "") {
           // Error
-          logger(`Validation Failed`, "error");
+          winston.error(`Validation Failed`);
           resolve({valid: false});
         } else {
-          logger(`validation: ` + JSON.stringify(validation), "debug");
+          winston.debug(`validation: ` + JSON.stringify(validation));
+
           // Create an expiring JWT
           var expiry = jwt.sign({
             data: {nonce: payload.nonce}
           }, SECRET, {expiresIn: CAPTCHA_SIGN_EXPIRY + 'm'});
-          resolve({nonce: payload.nonce, captcha: captcha.data, validation: validation, expiry: expiry});
+
+          // Create the audio
+          getMp3DataUriFromText("Please type in the letter you hear: " + captcha.text).then(function (audioDataUri) {
+              // Now pass back the full payload ,
+              resolve({nonce: payload.nonce, captcha: captcha.data, audio: audioDataUri, validation: validation, expiry: expiry});
+          });
         }
       }, function (err) {
-        logger(err, "error");
+        winston.error(err);
         resolve({valid: false});
       });
   });
@@ -194,7 +210,7 @@ exports.getCaptcha = getCaptcha;
 app.post('/captcha', function (req, res) {
   getCaptcha(req.body)
     .then(function (captcha) {
-      logger(`returning: ` + JSON.stringify(captcha), "debug");
+      winston.debug(`returning: ` + JSON.stringify(captcha));
       return res.send(captcha);
     });
 });
@@ -207,7 +223,7 @@ app.post('/captcha', function (req, res) {
  */
 ////////////////////////////////////////////////////////
 var verifyCaptcha = function (payload) {
-  logger(`incoming payload: ` + JSON.stringify(payload), "debug");
+  winston.debug(`incoming payload: ` + JSON.stringify(payload));
   return new Promise(function (resolve, reject) {
     var validation = payload.validation;
     var answer = payload.answer;
@@ -219,7 +235,7 @@ var verifyCaptcha = function (payload) {
         process.env.BYPASS_ANSWER === answer) {
 
         // Passed the captcha test
-        logger(`Captcha bypassed! Creating JWT.`, "debug");
+        winston.debug(`Captcha bypassed! Creating JWT.`);
 
         var token = jwt.sign({
             data: {nonce: nonce}
@@ -230,17 +246,17 @@ var verifyCaptcha = function (payload) {
     // Normal mode, decrypt token
     decrypt(validation, PRIVATE_KEY)
       .then(function (body) {
-        logger(`verifyCaptcha decrypted: ` + JSON.stringify(body), "debug");
+        winston.debug(`verifyCaptcha decrypted: ` + JSON.stringify(body));
         if (body !== null) {
 
           // Check answer
-          if (body.answer.toLowerCase() === answer.toLowerCase()) {
+          if (body.answer === answer) {
 
             // Check expiry
             if (body.expiry > Date.now()) {
 
               // Passed the captcha test
-              logger(`Captcha verified! Creating JWT.`, "debug");
+              winston.debug(`Captcha verified! Creating JWT.`);
 
               var token = jwt.sign({
                 data: {nonce: nonce}
@@ -249,18 +265,18 @@ var verifyCaptcha = function (payload) {
             }
             else {
               // incorrect answer
-              logger(`Captcha expired: ` + body.expiry + "; now: " + Date.now(), "debug");
+              winston.debug(`Captcha expired: ` + body.expiry + "; now: " + Date.now());
               resolve({valid: false});
             }
           }
           else {
             // incorrect answer
-            logger(`Captcha answer incorrect`, "debug");
+            winston.debug(`Captcha answer incorrect`);
             resolve({valid: false});
           }
         } else {
           // Bad decyption
-          logger(`Captcha decryption failed`, "error");
+          winston.error(`Captcha decryption failed`);
           resolve({valid: false});
         }
       });
@@ -282,22 +298,22 @@ app.post('/verify/captcha', function (req, res) {
  */
 ////////////////////////////////////////////////////////
 var verifyJWT = function (token, nonce) {
-  logger(`verifying: ${token} against ${nonce}`, "debug");
+  winston.debug(`verifying: ${token} against ${nonce}`);
   return new Promise(function (resolve, reject) {
     try {
 
       var decoded = jwt.verify(token, SECRET);
-      logger(`decoded: ` + JSON.stringify(decoded), "debug");
+      winston.debug(`decoded: ` + JSON.stringify(decoded));
 
       if (decoded.nonce === nonce) {
-        logger(`Captcha Valid`, "debug");
+        winston.debug(`Captcha Valid`);
         resolve({valid: true});
       } else {
-        logger(`Captcha Invalid!`, "debug");
+        winston.debug(`Captcha Invalid!`);
         resolve({valid: false});
       }
     } catch (e) {
-      logger(`Token/ResourceID Verification Failed: ` + JSON.stringify(e), "error");
+      winston.error(`Token/ResourceID Verification Failed: ` + JSON.stringify(e));
       resolve({valid: false});
     }
   });
@@ -310,6 +326,60 @@ app.post('/verify/jwt', function (req, res) {
       res.send(ret);
     });
 });
+
+////////////////////////////////////////////////////////
+/*
+ * Audio routines
+ */
+////////////////////////////////////////////////////////
+function getMp3DataUriFromText(text) {
+    winston.debug("Starting audio generation...");
+    return new Promise(function (resolve, reject) {
+
+        // init wave reader, used to convert WAV to PCM
+        var reader = new wav.Reader();
+
+        // we have to wait for the "format" event before we can start encoding
+        reader.on('format', function (format) {
+            // init encoder
+            winston.debug("Init mp3 encoder");
+            var encoder = new lame.Encoder(format);
+
+            // Pipe Wav reader to the encoder and capture the output stream
+            winston.debug("Pipe WAV reader to MP3 encoder");
+            var outputStream = reader.pipe(encoder);
+
+            // As the stream is encoded, convert the mp3 array buffer chunks into base64 string with mime type
+            var dataUri = "data:audio/mp3;base64,";
+            outputStream.on('data', function (arrayBuffer) {
+                winston.debug("Encoder output received chunk of bytes, convert to base64 string");
+                dataUri += arrayBuffer.toString('base64');
+            });
+
+            // When encoding is complete, callback with data uri
+            outputStream.on('finish', function () {
+                winston.debug("Finished converting to MP3");
+                resolve(dataUri);
+            });
+        });
+
+        // Generate audio, Base64 encoded WAV in DataUri format including mime type header
+        winston.debug("Generate speach as WAV");
+        var audioArray = meSpeak.speak(text, {rawdata: "array"});
+
+        // convert to buffer
+        winston.debug("Convert byte array to buffer");
+        var audioBuffer = Buffer.from(audioArray);
+
+        // Convert ArrayBuffer to Streamable type for input to the encoder
+        winston.debug("Streamify our buffer");
+        var audioStream = streamifier.createReadStream(audioBuffer);
+
+        // once all events setup we can the pipeline
+        winston.debug("Pipe audio stream to WAV reader");
+        audioStream.pipe(reader);
+    });
+}
 
 app.get('/status', function (req, res) {
   res.send("OK");
