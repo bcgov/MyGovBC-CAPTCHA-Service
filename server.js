@@ -33,6 +33,7 @@ var LOG_LEVEL = process.env.LOG_LEVEL || "debug";
 var SERVICE_PORT = process.env.SERVICE_PORT || 3000;
 var WINSTON_HOST = process.env.WINSTON_HOST;
 var WINSTON_PORT = process.env.WINSTON_PORT;
+var AUDIO_ENABLED = process.env.AUDIO_ENABLED || "true";
 
 // Prevent default keys going into production
 if (process.env.NODE_ENV == 'production') {
@@ -111,7 +112,7 @@ if (args.length == 3 && args[2] == 'server') {
  */
 ////////////////////////////////////////////////////////
 function decrypt(body, private_key) {
-  logger(`to decrypt body: ` + JSON.stringify(body), "debug");
+  winston.debug(`to decrypt body: ` + JSON.stringify(body));
   return new Promise(function (resolve, reject) {
     try {
       jose.JWK.asKey(private_key, "json")
@@ -193,11 +194,36 @@ var getCaptcha = function (payload) {
             data: {nonce: payload.nonce}
           }, SECRET, {expiresIn: CAPTCHA_SIGN_EXPIRY + 'm'});
 
-          // Create the audio
-          getMp3DataUriFromText("Please type in the letter you hear: " + captcha.text).then(function (audioDataUri) {
-              // Now pass back the full payload ,
-              resolve({nonce: payload.nonce, captcha: captcha.data, audio: audioDataUri, validation: validation, expiry: expiry});
-          });
+          // create basic response
+          var responseBody = {
+              nonce: payload.nonce,
+              captcha: captcha.data,
+              validation: validation,
+              expiry: expiry
+          };
+
+          // Create the audio if enabled
+          if (AUDIO_ENABLED && AUDIO_ENABLED === "true") {
+              winston.debug("Audio enabled");
+
+              // Insert leading text and commas to slow down reader
+              var captchaCharArray = captcha.text.toString().split("");
+              var spokenCatpcha = "Please type in following letters or numbers: ";
+              for(var i = 0; i < captchaCharArray.length; i++) {
+                spokenCatpcha += captchaCharArray[i] + ", ";
+              }
+
+              getMp3DataUriFromText(spokenCatpcha).then(function (audioDataUri) {
+                  // Now pass back the full payload ,
+                  responseBody.audio = audioDataUri;
+                  resolve(responseBody);
+              });
+          }
+          else {
+              // no audio specified, use basic response
+              winston.debug("Audio disabled");
+              resolve(responseBody);
+          }
         }
       }, function (err) {
         winston.error(err);
@@ -250,7 +276,7 @@ var verifyCaptcha = function (payload) {
         if (body !== null) {
 
           // Check answer
-          if (body.answer === answer) {
+          if (body.answer.toLowerCase() === answer.toLowerCase()) {
 
             // Check expiry
             if (body.expiry > Date.now()) {
@@ -271,7 +297,7 @@ var verifyCaptcha = function (payload) {
           }
           else {
             // incorrect answer
-            winston.debug(`Captcha answer incorrect`);
+            winston.debug(`Captcha answer incorrect, expected: ` + answer + '; provided: ' + body.answer);
             resolve({valid: false});
           }
         } else {

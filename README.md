@@ -52,6 +52,8 @@ The following is a list of the environment variables:
     > Time in minutes you want to automatically expire the Captcha returned to clients (default: 15min)
 * JWT_SIGN_EXPIRY
     > Time in minutes you want to automatically expire the Service JWT returned to clients (default: 15min)
+* AUDIO_ENABLED
+    > true/false to have service return audio for the captcha text.  Audio is a mp3 in DataUri format. 
 
 ###### Preparing for dependencies:
 ```
@@ -82,7 +84,7 @@ The tests cover the following cases:
 Request Type | API Endpoint | Parameters | Returns | Purpose
 ------------ | ------------- | ------------- | ------------- | -------------
 HTTP GET | /status | | OK | Returns "OK" if the service is running
-HTTP POST | /captcha | request body: { nonce: string } | {  "nonce": string,  "captcha": string,  "validation": JSON,  "expiry": JWT}| Retrieve a captcha to be displayed to a user
+HTTP POST | /captcha | request body: { nonce: string } | {  "nonce": string,  "captcha": string,  "audio": dataUri, validation": JSON,  "expiry": JWT}| Retrieve a captcha to be displayed to a user
 HTTP POST | /verify/captcha | request body: { nonce: string, answer: string, validation: JSON } | { valid: true/false, jwt: JWT } | Compare the answer to the encryptedAnswer, return a signed JWT if successful
 HTTP POST | /verify/jwt | request body: { nonce: string, token: JWT } | { valid: true/false } | Validate a signed JWT
 
