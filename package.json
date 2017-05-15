@@ -1,6 +1,6 @@
 {
   "name": "mygovbc-captcha-service",
-  "version": "4.0.1",
+  "version": "4.0.0",
   "description": "A reusable, secure and reliable CAPTCHA microservice for service providers to use within online digital services.",
   "main": "server.js",
   "scripts": {
