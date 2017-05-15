@@ -15,6 +15,7 @@ var wav = require('wav');
 var meSpeak = require("mespeak");
 var streamifier = require("streamifier");
 var os = require("os");
+var arrayBufferToBuffer = require('arraybuffer-to-buffer');
 
 var LISTEN_IP = process.env.LISTEN_IP || '0.0.0.0';
 var HOSTNAME = require('os').hostname();
@@ -390,12 +391,12 @@ function getMp3DataUriFromText(text) {
         });
 
         // Generate audio, Base64 encoded WAV in DataUri format including mime type header
-        winston.debug("Generate speach as WAV");
-        var audioArray = meSpeak.speak(text, {rawdata: "array"});
+        winston.debug("Generate speach as WAV in ArrayBuffer");
+        var audioArrayBuffer = meSpeak.speak(text, {rawdata: "ArrayBuffer"});
 
         // convert to buffer
-        winston.debug("Convert byte array to buffer");
-        var audioBuffer = Buffer.from(audioArray);
+        winston.debug("Convert arraybuffer to buffer");
+        var audioBuffer = arrayBufferToBuffer(audioArrayBuffer);
 
         // Convert ArrayBuffer to Streamable type for input to the encoder
         winston.debug("Streamify our buffer");
