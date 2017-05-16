@@ -47,7 +47,7 @@ if (process.env.NODE_ENV == 'production') {
 }
 
 if (process.env.NODE_ENV != 'production' ||
-    process.env.CORS_ALLOW_ALL == 'true') {
+  process.env.CORS_ALLOW_ALL == 'true') {
   app.use(function (req, res, next) {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
@@ -63,7 +63,7 @@ if (process.env.NODE_ENV != 'production' ||
 ////////////////////////////////////////////////////////
 winston.level = LOG_LEVEL;
 winston.remove(winston.transports.Console);
-winston.add(winston.transports.Console, {'timestamp':true});
+winston.add(winston.transports.Console, {'timestamp': true});
 if (process.env.WINSTON_PORT) {
   winston.add(winston.transports.Syslog, {
     host: WINSTON_HOST,
@@ -85,15 +85,15 @@ meSpeak.loadVoice(require("mespeak/voices/en/en-us.json"));
 
 // create the Encoder instance
 var encoder = new lame.Encoder({
-    // input
-    channels: 1,        // 1 channels
-    bitDepth: 16,       // 16-bit samples
-    sampleRate: 44100,  // 44,100 Hz sample rate
+  // input
+  channels: 1,        // 1 channels
+  bitDepth: 16,       // 16-bit samples
+  sampleRate: 44100,  // 44,100 Hz sample rate
 
-    // output
-    bitRate: 128,
-    outSampleRate: 22050,
-    mode: lame.MONO // STEREO (default), JOINTSTEREO, DUALCHANNEL or MONO
+  // output
+  bitRate: 128,
+  outSampleRate: 22050,
+  mode: lame.MONO // STEREO (default), JOINTSTEREO, DUALCHANNEL or MONO
 });
 
 // init app
@@ -199,34 +199,13 @@ var getCaptcha = function (payload) {
 
           // create basic response
           var responseBody = {
-              nonce: payload.nonce,
-              captcha: captcha.data,
-              validation: validation,
-              expiry: expiry
+            nonce: payload.nonce,
+            captcha: captcha.data,
+            validation: validation,
+            expiry: expiry
           };
+          resolve(responseBody);
 
-          // Create the audio if enabled
-          if (AUDIO_ENABLED && AUDIO_ENABLED === "true") {
-              winston.debug("Audio enabled");
-
-              // Insert leading text and commas to slow down reader
-              var captchaCharArray = captcha.text.toString().split("");
-              var spokenCatpcha = "Please type in following letters or numbers: ";
-              for(var i = 0; i < captchaCharArray.length; i++) {
-                spokenCatpcha += captchaCharArray[i] + ", ";
-              }
-
-              getMp3DataUriFromText(spokenCatpcha).then(function (audioDataUri) {
-                  // Now pass back the full payload ,
-                  responseBody.audio = audioDataUri;
-                  resolve(responseBody);
-              });
-          }
-          else {
-              // no audio specified, use basic response
-              winston.debug("Audio disabled");
-              resolve(responseBody);
-          }
         }
       }, function (err) {
         winston.error(err);
@@ -260,16 +239,16 @@ var verifyCaptcha = function (payload) {
 
     // Captcha by-pass for automated testing in dev/test environments
     if (process.env.BYPASS_ANSWER &&
-        process.env.BYPASS_ANSWER.length > 0 &&
-        process.env.BYPASS_ANSWER === answer) {
+      process.env.BYPASS_ANSWER.length > 0 &&
+      process.env.BYPASS_ANSWER === answer) {
 
-        // Passed the captcha test
-        winston.debug(`Captcha bypassed! Creating JWT.`);
+      // Passed the captcha test
+      winston.debug(`Captcha bypassed! Creating JWT.`);
 
-        var token = jwt.sign({
-            data: {nonce: nonce}
-        }, SECRET, {expiresIn: JWT_SIGN_EXPIRY + 'm'});
-        resolve({valid: true, jwt: token});
+      var token = jwt.sign({
+        data: {nonce: nonce}
+      }, SECRET, {expiresIn: JWT_SIGN_EXPIRY + 'm'});
+      resolve({valid: true, jwt: token});
     }
 
     // Normal mode, decrypt token
@@ -320,6 +299,56 @@ app.post('/verify/captcha', function (req, res) {
     });
 });
 
+////////////////////////////////////////////////////////
+/*
+ * Get Audio
+ */
+////////////////////////////////////////////////////////
+var getAudio = function (body) {
+  winston.debug(`getting audio for`, body);
+  return new Promise(function (resolve, reject) {
+    try {
+      // Ensure audio is enabled.
+      if (!AUDIO_ENABLED || AUDIO_ENABLED !== "true") {
+        winston.error('audio disabled but user attempted to getAudio');
+        resolve({error: "audio disabled"});
+        return;
+      }
+
+      // pull out encrypted answer
+      var validation = body.validation;
+
+      // decrypt payload to get captcha text
+      decrypt(validation, PRIVATE_KEY)
+        .then(function (body) {
+          winston.debug('get audio decrypted body', body);
+
+          // Insert leading text and commas to slow down reader
+          var captchaCharArray = body.answer.toString().split("");
+          var spokenCatpcha = "Please type in following letters or numbers: ";
+          for (var i = 0; i < captchaCharArray.length; i++) {
+            spokenCatpcha += captchaCharArray[i] + ", ";
+          }
+
+          getMp3DataUriFromText(spokenCatpcha).then(function (audioDataUri) {
+            // Now pass back the full payload ,
+            resolve({audio: audioDataUri});
+          });
+
+        });
+    } catch (e) {
+      winston.error('Error getting audio:', e);
+      resolve({error: "unknown"});
+    }
+  });
+};
+
+app.post('/captcha/audio', function (req, res) {
+  getAudio(req.body)
+    .then(function (ret) {
+      return res.send(ret);
+    });
+});
 
 ////////////////////////////////////////////////////////
 /*
@@ -362,52 +391,52 @@ app.post('/verify/jwt', function (req, res) {
  */
 ////////////////////////////////////////////////////////
 function getMp3DataUriFromText(text) {
-    winston.debug("Starting audio generation...");
-    return new Promise(function (resolve, reject) {
+  winston.debug("Starting audio generation...");
+  return new Promise(function (resolve, reject) {
 
-        // init wave reader, used to convert WAV to PCM
-        var reader = new wav.Reader();
+    // init wave reader, used to convert WAV to PCM
+    var reader = new wav.Reader();
 
-        // we have to wait for the "format" event before we can start encoding
-        reader.on('format', function (format) {
-            // init encoder
-            winston.debug("Init mp3 encoder");
-            var encoder = new lame.Encoder(format);
+    // we have to wait for the "format" event before we can start encoding
+    reader.on('format', function (format) {
+      // init encoder
+      winston.debug("Init mp3 encoder");
+      var encoder = new lame.Encoder(format);
 
-            // Pipe Wav reader to the encoder and capture the output stream
-            winston.debug("Pipe WAV reader to MP3 encoder");
-            var outputStream = reader.pipe(encoder);
+      // Pipe Wav reader to the encoder and capture the output stream
+      winston.debug("Pipe WAV reader to MP3 encoder");
+      var outputStream = reader.pipe(encoder);
 
-            // As the stream is encoded, convert the mp3 array buffer chunks into base64 string with mime type
-            var dataUri = "data:audio/mp3;base64,";
-            outputStream.on('data', function (arrayBuffer) {
-                winston.debug("Encoder output received chunk of bytes, convert to base64 string");
-                dataUri += arrayBuffer.toString('base64');
-            });
+      // As the stream is encoded, convert the mp3 array buffer chunks into base64 string with mime type
+      var dataUri = "data:audio/mp3;base64,";
+      outputStream.on('data', function (arrayBuffer) {
+        winston.debug("Encoder output received chunk of bytes, convert to base64 string");
+        dataUri += arrayBuffer.toString('base64');
+      });
 
-            // When encoding is complete, callback with data uri
-            outputStream.on('finish', function () {
-                winston.debug("Finished converting to MP3");
-                resolve(dataUri);
-            });
-        });
-
-        // Generate audio, Base64 encoded WAV in DataUri format including mime type header
-        winston.debug("Generate speach as WAV in ArrayBuffer");
-        var audioArrayBuffer = meSpeak.speak(text, {rawdata: "ArrayBuffer"});
-
-        // convert to buffer
-        winston.debug("Convert arraybuffer to buffer");
-        var audioBuffer = arrayBufferToBuffer(audioArrayBuffer);
-
-        // Convert ArrayBuffer to Streamable type for input to the encoder
-        winston.debug("Streamify our buffer");
-        var audioStream = streamifier.createReadStream(audioBuffer);
-
-        // once all events setup we can the pipeline
-        winston.debug("Pipe audio stream to WAV reader");
-        audioStream.pipe(reader);
+      // When encoding is complete, callback with data uri
+      outputStream.on('finish', function () {
+        winston.debug("Finished converting to MP3");
+        resolve(dataUri);
+      });
     });
+
+    // Generate audio, Base64 encoded WAV in DataUri format including mime type header
+    winston.debug("Generate speach as WAV in ArrayBuffer");
+    var audioArrayBuffer = meSpeak.speak(text, {rawdata: "ArrayBuffer"});
+
+    // convert to buffer
+    winston.debug("Convert arraybuffer to buffer");
+    var audioBuffer = arrayBufferToBuffer(audioArrayBuffer);
+
+    // Convert ArrayBuffer to Streamable type for input to the encoder
+    winston.debug("Streamify our buffer");
+    var audioStream = streamifier.createReadStream(audioBuffer);
+
+    // once all events setup we can the pipeline
+    winston.debug("Pipe audio stream to WAV reader");
+    audioStream.pipe(reader);
+  });
 }
 
 app.get('/status', function (req, res) {
