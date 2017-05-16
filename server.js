@@ -58,10 +58,12 @@ if (process.env.NODE_ENV != 'production' ||
 
 ////////////////////////////////////////////////////////
 /*
- * Logger
+ * Logger init
  */
 ////////////////////////////////////////////////////////
 winston.level = LOG_LEVEL;
+winston.remove(winston.transports.Console);
+winston.add(winston.transports.Console, {'timestamp':true});
 if (process.env.WINSTON_PORT) {
   winston.add(winston.transports.Syslog, {
     host: WINSTON_HOST,
