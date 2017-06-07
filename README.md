@@ -89,5 +89,11 @@ HTTP POST | /captcha/audio | request body: { validation: string } | {  "audio": 
 HTTP POST | /verify/captcha | request body: { nonce: string, answer: string, validation: JSON } | { valid: true/false, jwt: JWT } | Compare the answer to the encryptedAnswer, return a signed JWT if successful
 HTTP POST | /verify/jwt | request body: { nonce: string, token: JWT } | { valid: true/false } | Validate a signed JWT
 
+#### API Demo
+You can try it out the API for yourself at our demo environment by following the above API specs:
+
+https://mygovbc-captcha-service-demo.pathfinder.gov.bc.ca
+
+
 #### Production Setup
 See [Deploy to OpenShift](openshift/README.md) docs.
