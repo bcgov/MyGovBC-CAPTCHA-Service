@@ -34,25 +34,25 @@ You have two choices of configuring the service
 
 The following is a list of the environment variables:
 
-* NODE_ENV
+* NODE_ENV (optional)
     > If running in a production environment, you should set this to "production" to force you to se SECRET and PRIVATE_KEY accordingly.
-* SECRET
+* SECRET (required)
     > This should be the same on each server/service/pod that will need to verify the JWT created by any other server/service/pod.
-* PRIVATE_KEY
+* PRIVATE_KEY (required)
     > This is for encrypting the answer in the captcha for stateless verification on any other server/service/pod.
-* WINSTON_HOST
+* WINSTON_HOST (optional)
     >  The remote host that winston service is running on, if using winston in your deployment.
-* WINSTON_PORT
+* WINSTON_PORT (optional)
     >  The remote port that winston is listening on, if using winston in your deployment.
-* LOG_LEVEL
+* LOG_LEVEL (optional)
     > Set this to none/error/debug depending on how much verbosity to stderr/stdout you would like.
-* SERVICE_PORT
-    > What port you want the service to run on, defaults to 3000.
-* CAPTCHA_SIGN_EXPIRY
+* SERVICE_PORT (optional)
+    > What port you want the service to run on, defaults to 8080.
+* CAPTCHA_SIGN_EXPIRY (optional)
     > Time in minutes you want to automatically expire the Captcha returned to clients (default: 15min)
-* JWT_SIGN_EXPIRY
+* JWT_SIGN_EXPIRY (optional)
     > Time in minutes you want to automatically expire the Service JWT returned to clients (default: 15min)
-* AUDIO_ENABLED
+* AUDIO_ENABLED (optional)
     > true/false to have service return audio for the captcha text.  Audio is a mp3 in DataUri format. 
 
 ###### Preparing for dependencies:
