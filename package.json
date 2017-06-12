@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "test": "node tests/test.js",
-    "start": "node server.js server"
+    "start": "node server.js server",
+    "install": "npm install"
   },
   "dependencies": {
     "arraybuffer-to-buffer": "0.0.4",
