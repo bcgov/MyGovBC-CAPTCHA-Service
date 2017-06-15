@@ -95,5 +95,8 @@ You can try it out the API for yourself at our demo environment by following the
 https://mygovbc-captcha-service-demo.pathfinder.gov.bc.ca
 
 
-#### Production Setup
-See [Deploy to OpenShift](openshift/README.md) docs.
+#### Build/Deploy Setup
+
+For Jenkins 2.x use the `Jenkinsfile` pipeline script.  Requires `NodeJS 4+ plugin`. 
+
+For OpenShift s2i, see [Deploy to OpenShift](openshift/README.md) docs.
