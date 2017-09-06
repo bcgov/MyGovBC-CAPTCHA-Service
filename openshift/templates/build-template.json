@@ -89,7 +89,7 @@
           "type": "Git",
           "git": {
             "uri": "${SOURCE_REPOSITORY_URL}",
-            "ref": "master"
+            "ref": "${GIT_REFERENCE}"
           }
         },
         "strategy": {
