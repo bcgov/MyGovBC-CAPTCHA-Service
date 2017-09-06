@@ -1,6 +1,19 @@
 # OpenShift
 
-## Build Setup
+## Build Setup for Jenkins 2.x with pipelines
+
+Go to your openshift console and get the login token.  
+In a terminal, do the "oc login.." and change your project to the "tools" project.
+Clone the repo from github or go to its location if you already have it.
+Go to the openshift/templates directory.
+Execute:
+oc process -f build-template.json | oc create -f -
+Now you can go to the openshift console, the "tools" project, and you will see
+in the "Builds" tab, then "Pipelines", you'll see the captcha-service-pipeline.
+You can now start the pipeline.
+
+
+## Build Setup for Jenkins 1.x
 
 Build using the stock NodeJS 4.x image on OpenShift.  Simply `Add to Project` and point it 
 to the latest release version number NOT the head of master.  For example, `Source ref: v4`.
