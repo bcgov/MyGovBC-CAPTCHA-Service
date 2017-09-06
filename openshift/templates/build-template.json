@@ -1,0 +1,161 @@
+{
+  "kind": "Template",
+  "apiVersion": "v1",
+  "metadata":
+  {
+    "name": "dotnetcore-build",
+    "annotations":
+    {
+      "description": "Contains build objects",
+      "tags": "aspnetcore",
+      "iconClass": "icon-github"
+    }
+  },
+  "labels":
+  {
+    "template": "nmp-build"
+  },
+  "objects": [ 
+{
+    "kind": "BuildConfig",
+    "apiVersion": "v1",
+    "metadata": {
+        "name": "${APPLICATION_NAME}",
+        "creationTimestamp": null,
+        "labels": {
+            "app": "${APPLICATION_NAME}"
+        },
+        "annotations": {
+            "openshift.io/generated-by": "OpenShiftWebConsole"
+        }
+    },
+    "spec": {
+        "triggers": [
+            {
+                "type": "GitHub",
+                "github": {
+                    "secret": "e194ae25584a7c54"
+                }
+            },
+            {
+                "type": "Generic",
+                "generic": {
+                    "secret": "ee06db41ce8e07d8"
+                }
+            },
+            {
+                "type": "ImageChange",
+                "imageChange": {}
+            },
+            {
+                "type": "ConfigChange"
+            }
+        ],
+        "runPolicy": "Serial",
+        "source": {
+            "type": "Git",
+            "git": {
+                "uri": "${SOURCE_REPOSITORY_URL}",
+                "ref": "master"
+            }
+        },
+        "strategy": {
+            "type": "Source",
+            "sourceStrategy": {
+                "from": {
+                    "kind": "ImageStreamTag",
+                    "namespace": "openshift",
+                    "name": "nodejs:4"
+                },
+                "env": [
+                    {
+                        "name": "LOGSTASH_PORT",
+                        "value": "28777"
+                    }
+                ]
+            }
+        },
+        "output": {
+            "to": {
+                "kind": "ImageStreamTag",
+                "namespace": "gcpe-mygovbc-msp-tools",
+                "name": "${APPLICATION_NAME}:latest"
+            }
+        },
+        "resources": {},
+        "postCommit": {},
+        "nodeSelector": null
+    },
+    "status": {
+        "lastVersion": 0
+    }
+},
+{
+    "kind": "BuildConfig",
+    "apiVersion": "v1",
+    "metadata": {
+        "name": "${APPLICATION_NAME}-pipeline",
+        "creationTimestamp": null,
+        "labels": {
+            "app": "${APPLICATION_NAME}-pipeline",
+            "name": "${APPLICATION_NAME}-pipeline",
+            "template": "${APPLICATION_NAME}-pipeline"
+        }
+    },
+    "spec": {        
+        "runPolicy": "Parallel",
+        "source": {
+            "type": "Git",
+            "git": {
+                "uri": "${SOURCE_REPOSITORY_URL}",
+                "ref": "master"
+            }
+        },
+        "strategy": {
+            "type": "JenkinsPipeline",
+            "jenkinsPipelineStrategy": {
+                "jenkinsfilePath": "Jenkinsfile"
+            }
+        },
+        "output": {},
+        "resources": {},
+        "postCommit": {},
+        "nodeSelector": null
+    },
+    "status": {
+        "lastVersion": 0
+    }
+}
+
+],
+  "parameters": [
+    {
+      "name": "APPLICATION_NAME",
+      "displayName": "Application Name",
+      "description": "The name given to the application",
+      "required": true,
+      "value": "mygovbc-captcha-service"
+    },
+    {
+      "name": "DEPLOYMENT_TYPE",
+      "displayName": "Deployment Type",
+      "description": "The name assigned to the imagestreams defined in this template.",
+      "required": true,
+      "value": "latest"
+    },
+    {
+      "name": "SOURCE_REPOSITORY_URL",
+      "displayName": "Source Repository",
+      "description": "The source repository to use for the builds.",
+      "required": true,
+      "value": "https://github.com/bcgov/MyGovBC-CAPTCHA-Service.git"
+    },	
+    {
+      "name": "GIT_REFERENCE",
+      "displayName": "Git Reference",
+      "description": "Optional branch, tag, or commit.",
+      "required": true,
+      "value": "master"
+    }
+  ]
+}
