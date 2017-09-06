@@ -59,7 +59,6 @@
         "output": {
           "to": {
             "kind": "ImageStreamTag",
-            "namespace": "gcpe-mygovbc-msp-tools",
             "name": "${APPLICATION_NAME}:latest"
           }
         },
@@ -115,13 +114,6 @@
       "description": "The name given to the application",
       "required": true,
       "value": "mygovbc-captcha-service"
-    },
-    {
-      "name": "DEPLOYMENT_TYPE",
-      "displayName": "Deployment Type",
-      "description": "The name assigned to the imagestreams defined in this template.",
-      "required": true,
-      "value": "latest"
     },
     {
       "name": "SOURCE_REPOSITORY_URL",
