@@ -134,7 +134,7 @@
       "displayName": "Git Reference",
       "description": "Optional branch, tag, or commit.",
       "required": true,
-      "value": "master"
+      "value": "v5"
     }
   ]
 }
