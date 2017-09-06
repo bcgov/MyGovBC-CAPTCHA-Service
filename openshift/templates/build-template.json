@@ -54,13 +54,7 @@
               "kind": "ImageStreamTag",
               "namespace": "openshift",
               "name": "nodejs:4"
-            },
-            "env": [
-              {
-                "name": "LOGSTASH_PORT",
-                "value": "28777"
-              }
-            ]
+            }
           }
         },
         "output": {

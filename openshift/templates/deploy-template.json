@@ -1,0 +1,333 @@
+{
+  "apiVersion": "v1",
+  "kind": "Template",
+  "metadata": {
+    "annotations": {
+      "description": "Deployment template mygovbc-captcha-service",
+      "tags": "captcha"
+    },
+    "name": "mygovbc-captcha-service-deploy"
+  },
+  "objects": [
+    {
+      "apiVersion": "v1",
+      "kind": "DeploymentConfig",
+      "metadata": {
+        "creationTimestamp": null,
+        "labels": {
+          "app": "${NAME}"
+        },
+        "name": "${NAME}"
+      },
+      "spec": {
+        "replicas": 2,
+        "selector": {
+          "app": "${NAME}",
+          "deploymentconfig": "${NAME}"
+        },
+        "strategy": {
+          "rollingParams": {
+            "intervalSeconds": 1,
+            "maxSurge": "25%",
+            "maxUnavailable": "25%",
+            "timeoutSeconds": 600,
+            "updatePeriodSeconds": 1
+          },
+          "type": "Rolling"
+        },
+        "template": {
+          "metadata": {
+            "creationTimestamp": null,
+            "labels": {
+              "app": "${NAME}",
+              "deploymentconfig": "${NAME}"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "image": "${NAME}",
+                "imagePullPolicy": "Always",
+                "name": "${NAME}",
+                "ports": [
+                  {
+                    "containerPort": 8080,
+                    "protocol": "TCP"
+                  }
+                ],
+                "env": [
+                  {
+                    "name": "SECRET",
+                    "value": "${SECRET}"
+                  },
+                  {
+                    "name": "PRIVATE_KEY",
+                    "value": "${PRIVATE_KEY}"
+                  },
+                  {
+                    "name": "CORS_ALLOW_ALL",
+                    "value": "${CORS_ALLOW_ALL}"
+                  },
+                  {
+                    "name": "WINSTON_HOST",
+                    "value": "${WINSTON_HOST}"
+                  },
+                  {
+                    "name": "WINSTON_PORT",
+                    "value": "${WINSTON_PORT}"
+                  },
+                  {
+                    "name": "LOG_LEVEL",
+                    "value": "${LOG_LEVEL}"
+                  },
+                  {
+                    "name": "SERVICE_PORT",
+                    "value": "${SERVICE_PORT}"
+                  },
+                  {
+                    "name": "CAPTCHA_SIGN_EXPIRY",
+                    "value": "${CAPTCHA_SIGN_EXPIRY}"
+                  },
+                  {
+                    "name": "JWT_SIGN_EXPIRY",
+                    "value": "${LOG_LEVEL}"
+                  },
+                  {
+                    "name": "AUDIO_ENABLED",
+                    "value": "${AUDIO_ENABLED}"
+                  },
+                  {
+                    "name": "CORS_ALLOW_ALL",
+                    "value": "${CORS_ALLOW_ALL}"
+                  }
+                ],
+                "resources": {
+                  "requests": {
+                    "cpu": "10m",
+                    "memory": "100Mi"
+                  },
+                  "limits": {
+                    "cpu": "1",
+                    "memory": "1Gi"
+                  }
+                },
+                "livenessProbe": {
+                  "httpGet": {
+                    "path": "/status",
+                    "port": 8080,
+                    "scheme": "HTTP"
+                  },
+                  "initialDelaySeconds": 30,
+                  "timeoutSeconds": 60,
+                  "periodSeconds": 10,
+                  "successThreshold": 1,
+                  "failureThreshold": 3
+                },
+                "readinessProbe": {
+                  "httpGet": {
+                    "path": "/status",
+                    "port": 8080,
+                    "scheme": "HTTP"
+                  },
+                  "initialDelaySeconds": 10,
+                  "timeoutSeconds": 60,
+                  "periodSeconds": 10,
+                  "successThreshold": 1,
+                  "failureThreshold": 3
+                }
+              }
+            ],
+            "dnsPolicy": "ClusterFirst",
+            "restartPolicy": "Always",
+            "securityContext": {
+            },
+            "terminationGracePeriodSeconds": 30
+          }
+        },
+        "test": false,
+        "triggers": [
+          {
+            "type": "ConfigChange"
+          },
+          {
+            "type": "ImageChange",
+            "imageChangeParams": {
+              "automatic": true,
+              "containerNames": [
+                "${NAME}"
+              ],
+              "from": {
+                "kind": "ImageStreamTag",
+                "namespace": "${IMAGE_NAMESPACE}",
+                "name": "${NAME}:${TAG_NAME}"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Service",
+      "metadata": {
+        "creationTimestamp": null,
+        "labels": {
+          "app": "${NAME}"
+        },
+        "name": "${NAME}"
+      },
+      "spec": {
+        "ports": [
+          {
+            "name": "8080-tcp",
+            "port": 8080,
+            "protocol": "TCP",
+            "targetPort": 8080
+          }
+        ],
+        "selector": {
+          "app": "${NAME}",
+          "deploymentconfig": "${NAME}"
+        },
+        "sessionAffinity": "None",
+        "type": "ClusterIP"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Route",
+      "metadata": {
+        "labels": {
+          "app": "${NAME}"
+        },
+        "name": "${NAME}"
+      },
+      "spec": {
+        "host": "${APPLICATION_DOMAIN}",
+        "port": {
+          "targetPort": "8080-tcp"
+        },
+        "tls": {
+          "insecureEdgeTerminationPolicy": "Redirect",
+          "termination": "edge"
+        },
+        "to": {
+          "kind": "Service",
+          "name": "${NAME}",
+          "weight": 100
+        }
+      }
+    },
+    {
+      "apiVersion": "extensions/v1beta1",
+      "kind": "HorizontalPodAutoscaler",
+      "metadata": {
+        "name": "${NAME}",
+        "labels": {
+          "app": "${NAME}"
+        }
+      },
+      "spec": {
+        "scaleRef": {
+          "kind": "DeploymentConfig",
+          "name": "${NAME}",
+          "apiVersion": "extensions/v1beta1",
+          "subresource": "scale"
+        },
+        "minReplicas": 2,
+        "maxReplicas": 6
+      }
+    }
+  ],
+  "parameters": [
+    {
+      "description": "The name assigned to all of the openshift objects defined in this template.",
+      "displayName": "Name",
+      "name": "NAME",
+      "required": true,
+      "value": "mygovbc-captcha-service"
+    },
+    {
+      "description": "Application domain name, what external domain name you want.  You must change this value!",
+      "displayName": "Application Domain",
+      "name": "APPLICATION_DOMAIN",
+      "required": true,
+      "value": "captcha-service-gcpe-mygovbc-demo.pathfinder.gov.bc.ca"
+    },
+    {
+      "description": "The namespace where to get the above image name, do not use the default!",
+      "displayName": "Image Namespace",
+      "name": "IMAGE_NAMESPACE",
+      "required": true,
+      "value": ""
+    },
+    {
+      "description": "The TAG name for this environment, e.g., dev, test, prod",
+      "displayName": "Env TAG name",
+      "name": "TAG_NAME",
+      "value": "dev"
+    },
+    {
+      "description": "This should be the same on each server/service/pod that will need to verify the JWT created by any other server/service/pod.",
+      "displayName": "Secret",
+      "name": "SECRET",
+      "required": true,
+      "value": ""
+    },
+    {
+      "description": "This is for encrypting the answer in the captcha for stateless verification on any other server/service/pod.",
+      "displayName": "Private Key",
+      "name": "PRIVATE_KEY",
+      "required": true,
+      "value": ""
+    },
+    {
+      "description": "The remote host that winston service is running on, if using winston in your deployment.",
+      "displayName": "Winston Host",
+      "name": "WINSTON_HOST",
+      "required": false
+    },
+    {
+      "description": "The remote port that winston is listening on, if using winston in your deployment.",
+      "displayName": "Winston Port",
+      "name": "WINSTON_PORT",
+      "required": false
+    },
+    {
+      "description": "Set this to none/error/debug depending on how much verbosity to stderr/stdout you would like.",
+      "displayName": "Log Level",
+      "name": "LOG_LEVEL",
+      "required": false
+    },
+    {
+      "description": "What port you want the service to run on, defaults to 8080.",
+      "displayName": "Service Port",
+      "name": "SERVICE_PORT",
+      "required": false
+    },
+    {
+      "description": "Time in minutes you want to automatically expire the Captcha returned to clients (default: 15min)",
+      "displayName": "Captcha Sign Expiry",
+      "name": "CAPTCHA_SIGN_EXPIRY",
+      "required": false
+    },
+    {
+      "description": "Time in minutes you want to automatically expire the Service JWT returned to clients (default: 15min)",
+      "displayName": "JWT Sign Expiry",
+      "name": "JWT_SIGN_EXPIRY",
+      "required": false
+    },
+    {
+      "description": "true/false to have service return audio for the captcha text.  Audio is a mp3 in DataUri format.",
+      "displayName": "Audio Enabled",
+      "name": "AUDIO_ENABLED",
+      "required": false
+    },
+    {
+      "description": "true/false to have service accept any host, used only for dev/test purposes only",
+      "displayName": "CORS Allow All",
+      "name": "CORS_ALLOW_ALL",
+      "required": false
+    }
+  ]
+}

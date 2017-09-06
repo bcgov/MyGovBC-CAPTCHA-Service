@@ -54,7 +54,8 @@ The following is a list of the environment variables:
     > Time in minutes you want to automatically expire the Service JWT returned to clients (default: 15min)
 * AUDIO_ENABLED (optional)
     > true/false to have service return audio for the captcha text.  Audio is a mp3 in DataUri format. 
-
+* CORS_ALLOW_ALL (optional)
+    > true/false to have service accept any host, used only for dev/test purposes only 
 ###### Preparing for dependencies:
 ```
 npm install
