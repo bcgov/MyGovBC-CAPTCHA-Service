@@ -1,32 +1,38 @@
-node('master') {
-    stage('checkout') {
-       echo "checking out source"
-       echo "Build: ${BUILD_ID}"
-       checkout scm
+// jenkins file for splunk-forwarder
+
+def APP_NAME = 'mygovbc-captcha-service'
+def APP_VERSION = 'master'
+def TAG_NAMES = ['dev', 'test', 'prod']
+
+def BUILD_CONFIG = APP_NAME 
+def IMAGESTREAM_NAME = APP_NAME
+
+node {
+
+    stage('build') {
+       echo "Building: " + BUILD_CONFIG
+       openshiftBuild bldCfg: BUILD_CONFIG, showBuildLogs: 'true'
+       openshiftTag destStream: IMAGESTREAM_NAME, verbose: 'true', destTag: '$BUILD_ID', srcStream: IMAGESTREAM_NAME, srcTag: 'latest'
     }
-	 
-	stage('build') {
-	 echo "Building..."
-	 openshiftBuild bldCfg: "mygovbc-captcha-service", showBuildLogs: 'true'
-	 openshiftTag destStream: "mygovbc-captcha-service", verbose: 'true', destTag: '$BUILD_ID', srcStream: "mygovbc-captcha-service", srcTag: 'latest'
-	 openshiftTag destStream: "mygovbc-captcha-service", verbose: 'true', destTag: 'dev', srcStream: "mygovbc-captcha-service", srcTag: 'latest'
+
+    stage('deploy-' + TAG_NAMES[0]) {
+       echo "Deploying to: " + TAG_NAMES[0]
+       echo "tag source " + IMAGESTREAM_NAME + " with tag " + '$BUILD_ID' + " to dest " + IMAGESTREAM_NAME
+       openshiftTag destStream: IMAGESTREAM_NAME, verbose: 'true', destTag: TAG_NAMES[0], srcStream: IMAGESTREAM_NAME, srcTag: '$BUILD_ID'
     }
 }
 
-
-stage('deploy-test') {
-  input "Deploy to test?"
-  
-  node('master'){
-     openshiftTag destStream: 'mygovbc-captcha-service', verbose: 'true', destTag: 'test', srcStream: 'mygovbc-captcha-service', srcTag: '$BUILD_ID'
+node {
+  stage('deploy-' + TAG_NAMES[1]) {
+    input "Deploy to " + TAG_NAMES[1] + "?"
+    openshiftTag destStream: IMAGESTREAM_NAME, verbose: 'true', destTag: TAG_NAMES[1], srcStream: IMAGESTREAM_NAME, srcTag: '$BUILD_ID'
   }
 }
 
-stage('deploy-prod') {
-  input "Deploy to prod?"
-  node('master'){
-     openshiftTag destStream: 'mygovbc-captcha-service', verbose: 'true', destTag: 'prod', srcStream: 'mygovbc-captcha-service', srcTag: '$BUILD_ID'
+node {
+  stage('deploy-'  + TAG_NAMES[2]) {
+    input "Deploy to " + TAG_NAMES[2] + "?"
+    openshiftTag destStream: IMAGESTREAM_NAME, verbose: 'true', destTag: TAG_NAMES[2], srcStream: IMAGESTREAM_NAME, srcTag: '$BUILD_ID'
   }
-  
 }
 

@@ -1,2 +1,4 @@
 /node_modules
 /tests/test.html
+.idea
+package-lock.json
