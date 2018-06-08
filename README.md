@@ -41,7 +41,7 @@ The following is a list of the environment variables:
 * PRIVATE_KEY (required)
     > This is for encrypting the answer in the captcha for stateless verification on any other server/service/pod.
 * WINSTON_HOST (optional)
-    >  The remote host that winston service is running on, if using winston in your deployment.
+    >  The remote host that winston service is running on, if you're using winston in your deployment.
 * WINSTON_PORT (optional)
     >  The remote port that winston is listening on, if using winston in your deployment.
 * LOG_LEVEL (optional)
