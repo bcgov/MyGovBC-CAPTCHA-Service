@@ -2,3 +2,5 @@
 /tests/test.html
 .idea
 package-lock.json
+.env
+logs/

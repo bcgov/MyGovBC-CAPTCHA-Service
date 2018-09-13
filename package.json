@@ -11,6 +11,7 @@
     "arraybuffer-to-buffer": "0.0.4",
     "body-parser": "^1.16.0",
     "buffer": "^5.0.5",
+    "dotenv": "^6.0.0",
     "express": "^4.14.1",
     "jsonwebtoken": "^7.2.1",
     "lame": "^1.2.4",
