@@ -8,20 +8,20 @@ This is just the service part of an overall solution, for user interface compone
 
 * https://github.com/bcgov/MyGovBC-CAPTCHA-Widget
 
-#### Overall System Use Case
+#### Overall Use Case
 
-1. Client loads widget and a resource identifier (like a nonce)
-2. Widget executes and displays CAPTCHA challenge to user
+1. User agent i.e. browser loads the widget, feeding it with a nonce a.k.a. resource identifier
+2. Widget calls Service and displays CAPTCHA challenge to user
 3. User responds to challenge
 4. Widget sends user response to Service
-5. Service verifies response
-6. Service returns signed JWT including the nonce
-7. Widget notifies Client of success/failure
-8. Client includes JWT in Resource API call
-9. Resource API confirms the validity of the signed JWT in one of two ways
-    1. decode the JWT using the secret and compare the resource identifier in the decoded JWT with resource identifier obtained from request
-    2. call the `/verify/jwt` service API, passing JWT and resource identifier obtained from request
-10. Resource API allows/denies access to resource based on the outcome of the validation
+5. Service validates the response
+6. Service returns validation result and a signed JWT containing the nonce if passes
+7. Widget displays success/failure to user
+8. User agent includes the JWT in Resource API call i.e. form submission
+9. Resource API confirms the validity of the signed JWT in one of the two ways
+    1. if Resource API holds the shared secret, then it can decode the JWT using the shared secret and compare the nonce in the decoded JWT with nonce associated with the request
+    2. call the `/verify/jwt` service API, passing JWT and nonce associated with the request. In such case Resource API doesn't need to hold the shared secret.
+10. Resource API allows/denies access to resource based on the outcome of the JWT validation
 
 ###### Git Checkout and initialization:
 ```
@@ -29,9 +29,11 @@ git clone git@github.com:bcgov/MyGovBC-CAPTCHA-Service.git
 cd MyGovBC-CAPTCHA-Service/
 ```
 
-Use one of the following choices to configure the service
+Use one of the following ways to configure the service
 1. add a *.env* file in the app root containing the environment variables in the form of NAME=VALUE in each line
 2. set environment variables prior to launching the program
+
+If an environment variable is defined in both ways, the latter way takes precedence.
 
 The following is a list of the environment variables:
 
@@ -57,6 +59,8 @@ The following is a list of the environment variables:
     > true/false to have service return audio for the captcha text.  Audio is a mp3 in DataUri format. 
 * CORS_ALLOW_ALL (optional)
     > true/false to have service accept any host, used only for dev/test purposes only 
+* BYPASS_ANSWER (optional)
+    > A sure-pass answer used for things such as load testing. Never set the variable in production.
 ###### Preparing for dependencies:
 ```
 npm install
@@ -94,7 +98,7 @@ HTTP POST | /verify/jwt | request body: { nonce: string, token: JWT } | { valid:
 #### API Demo
 You can try it out the API for yourself at our demo environment by following the above API specs:
 
-https://mygovbc-captcha-service-demo.pathfinder.gov.bc.ca
+https://captcha-demo.pathfinder.gov.bc.ca/
 
 
 #### Build/Deploy Setup

@@ -42,5 +42,8 @@
   "bugs": {
     "url": "https://github.com/bcgov/MyGovBC-CAPTCHA-Service/issues"
   },
-  "homepage": "https://github.com/bcgov/MyGovBC-CAPTCHA-Service#readme"
+  "homepage": "https://github.com/bcgov/MyGovBC-CAPTCHA-Service#readme",
+  "engines": {
+    "node": ">=8.2.1"
+  }
 }

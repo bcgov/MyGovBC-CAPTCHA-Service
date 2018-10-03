@@ -114,48 +114,34 @@ if (args.length == 3 && args[2] == 'server') {
  * Encryption Routines
  */
 ////////////////////////////////////////////////////////
-function decrypt(body, private_key) {
+async function decrypt(body, private_key) {
   winston.debug(`to decrypt body: ` + JSON.stringify(body))
-  return new Promise(function (resolve, reject) {
-    try {
-      jose.JWK.asKey(private_key, "json")
-        .then(function (res) {
-          jose.JWE.createDecrypt(res)
-            .decrypt(body)
-            .then(function (decrypted) {
-              var decryptedObject = JSON.parse(decrypted.plaintext.toString('utf8'))
-              winston.debug('decrypted object: ' + JSON.stringify(decryptedObject))
-              resolve(decryptedObject)
-            })
-        })
-    } catch (e) {
-      winston.error(`err: ` + JSON.stringify(e))
-      reject(e)
-    }
-  })
+  try {
+    let res = await jose.JWK.asKey(private_key, "json")
+    let decrypted = await jose.JWE.createDecrypt(res)
+      .decrypt(body)
+    var decryptedObject = JSON.parse(decrypted.plaintext.toString('utf8'))
+    winston.debug('decrypted object: ' + JSON.stringify(decryptedObject))
+    return decryptedObject
+  } catch (e) {
+    winston.error(`err: ` + JSON.stringify(e))
+    throw e
+  }
 }
 
-function encrypt(body) {
+async function encrypt(body) {
   winston.debug(`encrypt: ` + JSON.stringify(body))
-  return new Promise(function (resolve, reject) {
-
-    var buff = Buffer.from(JSON.stringify(body))
-    try {
-      jose.JWE.createEncrypt(PRIVATE_KEY)
-        .update(buff)
-        .final()
-        .then(function (cr) {
-          winston.debug(`encrypted: ` + JSON.stringify(cr))
-          resolve(cr)
-        }, function (e) {
-          winston.error(`err: ` + JSON.stringify(e))
-          reject(e)
-        })
-    } catch (e) {
-      winston.error(`err: ` + JSON.stringify(e))
-      reject(e)
-    }
-  })
+  let buff = Buffer.from(JSON.stringify(body))
+  try {
+    let cr = await jose.JWE.createEncrypt(PRIVATE_KEY)
+      .update(buff)
+      .final()
+    winston.debug(`encrypted: ` + JSON.stringify(cr))
+    return cr
+  } catch (e) {
+    winston.error(`err: ` + JSON.stringify(e))
+    throw e
+  }
 }
 
 ////////////////////////////////////////////////////////
@@ -163,69 +149,61 @@ function encrypt(body) {
  * Get a new captcha
  */
 ////////////////////////////////////////////////////////
-var getCaptcha = function (payload) {
+let getCaptcha = async function (payload) {
   winston.debug(`getCaptcha: ${payload.nonce}`)
-
-  return new Promise(function (resolve, reject) {
-    var captcha = svgCaptcha.create({
-      size: 6, // size of random string
-      ignoreChars: '0o1il', // filter out some characters like 0o1i
-      noise: 2 // number of lines to insert for noise
-    })
-    if (!captcha || (captcha && !captcha.data)) {
-      // Something bad happened with Captcha.
-      resolve({
-        valid: false
-      })
-    }
-    winston.debug(`captcha generated: ${captcha.text}`)
-
-    // prep captcha string for good reading by putting spaces between letters
-    var captchaAudioText = "Type in the text box the following: " + captcha.text
-
-    // add answer, nonce and expiry to body
-    var body = {
-      nonce: payload.nonce,
-      answer: captcha.text,
-      expiry: Date.now() + (CAPTCHA_SIGN_EXPIRY * 60000)
-    }
-
-    encrypt(body, PRIVATE_KEY)
-      .then(function (validation) {
-        if (validation === "") {
-          // Error
-          winston.error(`Validation Failed`)
-          resolve({
-            valid: false
-          })
-        } else {
-          winston.debug(`validation: ` + JSON.stringify(validation))
-
-          // create basic response
-          var responseBody = {
-            nonce: payload.nonce,
-            captcha: captcha.data,
-            validation: validation
-          }
-          resolve(responseBody)
-
-        }
-      }, function (err) {
-        winston.error(err)
-        resolve({
-          valid: false
-        })
-      })
+  var captcha = svgCaptcha.create({
+    size: 6, // size of random string
+    ignoreChars: '0o1il', // filter out some characters like 0o1i
+    noise: 2 // number of lines to insert for noise
   })
+  if (!captcha || (captcha && !captcha.data)) {
+    // Something bad happened with Captcha.
+    return {
+      valid: false
+    }
+  }
+  winston.debug(`captcha generated: ${captcha.text}`)
+
+  // prep captcha string for good reading by putting spaces between letters
+  var captchaAudioText = "Type in the text box the following: " + captcha.text
+
+  // add answer, nonce and expiry to body
+  var body = {
+    nonce: payload.nonce,
+    answer: captcha.text,
+    expiry: Date.now() + (CAPTCHA_SIGN_EXPIRY * 60000)
+  }
+  try {
+    let validation = await encrypt(body, PRIVATE_KEY)
+    if (validation === "") {
+      // Error
+      winston.error(`Validation Failed`)
+      return {
+        valid: false
+      }
+    } else {
+      winston.debug(`validation: ` + JSON.stringify(validation))
+      // create basic response
+      var responseBody = {
+        nonce: payload.nonce,
+        captcha: captcha.data,
+        validation: validation
+      }
+      return responseBody
+    }
+  } catch (err) {
+    winston.error(err)
+    return {
+      valid: false
+    }
+  }
 }
 exports.getCaptcha = getCaptcha
 
-app.post('/captcha', function (req, res) {
-  getCaptcha(req.body)
-    .then(function (captcha) {
-      winston.debug(`returning: ` + JSON.stringify(captcha))
-      return res.send(captcha)
-    })
+app.post('/captcha', async function (req, res) {
+  let captcha = await getCaptcha(req.body)
+  winston.debug(`returning: ` + JSON.stringify(captcha))
+  return res.send(captcha)
 })
 
 
@@ -235,97 +213,91 @@ app.post('/captcha', function (req, res) {
  * If successful, return a signed jwt by us.
  */
 ////////////////////////////////////////////////////////
-var verifyCaptcha = function (payload) {
+var verifyCaptcha = async function (payload) {
   winston.debug(`incoming payload: ` + JSON.stringify(payload))
-  return new Promise(function (resolve, reject) {
-    var validation = payload.validation
-    var answer = payload.answer
-    var nonce = payload.nonce
+  var validation = payload.validation
+  var answer = payload.answer
+  var nonce = payload.nonce
 
-    // Captcha by-pass for automated testing in dev/test environments
-    if (process.env.BYPASS_ANSWER &&
-      process.env.BYPASS_ANSWER.length > 0 &&
-      process.env.BYPASS_ANSWER === answer) {
+  // Captcha by-pass for automated testing in dev/test environments
+  if (process.env.BYPASS_ANSWER &&
+    process.env.BYPASS_ANSWER.length > 0 &&
+    process.env.BYPASS_ANSWER === answer) {
 
-      // Passed the captcha test
-      winston.debug(`Captcha bypassed! Creating JWT.`)
+    // Passed the captcha test
+    winston.debug(`Captcha bypassed! Creating JWT.`)
 
-      var token = jwt.sign({
-        data: {
-          nonce: nonce
-        }
-      }, SECRET, {
-        expiresIn: JWT_SIGN_EXPIRY + 'm'
-      })
-      resolve({
-        valid: true,
-        jwt: token
-      })
+    var token = jwt.sign({
+      data: {
+        nonce: nonce
+      }
+    }, SECRET, {
+      expiresIn: JWT_SIGN_EXPIRY + 'm'
+    })
+    return {
+      valid: true,
+      jwt: token
     }
+  }
 
-    // Normal mode, decrypt token
-    decrypt(validation, PRIVATE_KEY)
-      .then(function (body) {
-        winston.debug(`verifyCaptcha decrypted: ` + JSON.stringify(body))
-        if (body !== null) {
+  // Normal mode, decrypt token
+  let body = await decrypt(validation, PRIVATE_KEY)
+  winston.debug(`verifyCaptcha decrypted: ` + JSON.stringify(body))
+  if (body !== null) {
 
-          // Check answer
-          if (body.answer.toLowerCase() === answer.toLowerCase()) {
-            if (body.nonce === nonce) {
-              // Check expiry
-              if (body.expiry > Date.now()) {
-                // Passed the captcha test
-                winston.debug(`Captcha verified! Creating JWT.`)
+    // Check answer
+    if (body.answer.toLowerCase() === answer.toLowerCase()) {
+      if (body.nonce === nonce) {
+        // Check expiry
+        if (body.expiry > Date.now()) {
+          // Passed the captcha test
+          winston.debug(`Captcha verified! Creating JWT.`)
 
-                var token = jwt.sign({
-                  data: {
-                    nonce: nonce
-                  }
-                }, SECRET, {
-                  expiresIn: JWT_SIGN_EXPIRY + 'm'
-                })
-                resolve({
-                  valid: true,
-                  jwt: token
-                })
-              } else {
-                // incorrect answer
-                winston.debug(`Captcha expired: ` + body.expiry + "; now: " + Date.now())
-                resolve({
-                  valid: false
-                })
-              }
-            } else {
-              // incorrect nonce
-              winston.debug(`nonce incorrect, expected: ` + body.nonce + '; provided: ' + nonce)
-              resolve({
-                valid: false
-              })
+          var token = jwt.sign({
+            data: {
+              nonce: nonce
             }
-          } else {
-            // incorrect answer
-            winston.debug(`Captcha answer incorrect, expected: ` + body.answer + '; provided: ' + answer)
-            resolve({
-              valid: false
-            })
+          }, SECRET, {
+            expiresIn: JWT_SIGN_EXPIRY + 'm'
+          })
+          return {
+            valid: true,
+            jwt: token
           }
         } else {
-          // Bad decyption
-          winston.error(`Captcha decryption failed`)
-          resolve({
+          // incorrect answer
+          winston.debug(`Captcha expired: ` + body.expiry + "; now: " + Date.now())
+          return {
             valid: false
-          })
+          }
         }
-      })
-  })
+      } else {
+        // incorrect nonce
+        winston.debug(`nonce incorrect, expected: ` + body.nonce + '; provided: ' + nonce)
+        return {
+          valid: false
+        }
+      }
+    } else {
+      // incorrect answer
+      winston.debug(`Captcha answer incorrect, expected: ` + body.answer + '; provided: ' + answer)
+      return {
+        valid: false
+      }
+    }
+  } else {
+    // Bad decyption
+    winston.error(`Captcha decryption failed`)
+    return {
+      valid: false
+    }
+  }
 }
 exports.verifyCaptcha = verifyCaptcha
 
-app.post('/verify/captcha', function (req, res) {
-  verifyCaptcha(req.body)
-    .then(function (ret) {
-      return res.send(ret)
-    })
+app.post('/verify/captcha', async function (req, res) {
+  let ret = await verifyCaptcha(req.body)
+  return res.send(ret)
 })
 
 ////////////////////////////////////////////////////////
@@ -333,56 +305,46 @@ app.post('/verify/captcha', function (req, res) {
  * Get Audio
  */
 ////////////////////////////////////////////////////////
-var getAudio = function (body) {
+var getAudio = async function (body) {
   winston.debug(`getting audio for`, body)
-  return new Promise(function (resolve, reject) {
-    try {
-      // Ensure audio is enabled.
-      if (!AUDIO_ENABLED || AUDIO_ENABLED !== "true") {
-        winston.error('audio disabled but user attempted to getAudio')
-        resolve({
-          error: "audio disabled"
-        })
-        return
+  try {
+    // Ensure audio is enabled.
+    if (!AUDIO_ENABLED || AUDIO_ENABLED !== "true") {
+      winston.error('audio disabled but user attempted to getAudio')
+      return {
+        error: "audio disabled"
       }
-
-      // pull out encrypted answer
-      var validation = body.validation
-
-      // decrypt payload to get captcha text
-      decrypt(validation, PRIVATE_KEY)
-        .then(function (body) {
-          winston.debug('get audio decrypted body', body)
-
-          // Insert leading text and commas to slow down reader
-          var captchaCharArray = body.answer.toString().split("")
-          var spokenCatpcha = "Please type in following letters or numbers: "
-          for (var i = 0; i < captchaCharArray.length; i++) {
-            spokenCatpcha += captchaCharArray[i] + ", "
-          }
-
-          getMp3DataUriFromText(spokenCatpcha).then(function (audioDataUri) {
-            // Now pass back the full payload ,
-            resolve({
-              audio: audioDataUri
-            })
-          })
-
-        })
-    } catch (e) {
-      winston.error('Error getting audio:', e)
-      resolve({
-        error: "unknown"
-      })
     }
-  })
+
+    // pull out encrypted answer
+    var validation = body.validation
+
+    // decrypt payload to get captcha text
+    body = await decrypt(validation, PRIVATE_KEY)
+    winston.debug('get audio decrypted body', body)
+
+    // Insert leading text and commas to slow down reader
+    var captchaCharArray = body.answer.toString().split("")
+    var spokenCatpcha = "Please type in following letters or numbers: "
+    for (var i = 0; i < captchaCharArray.length; i++) {
+      spokenCatpcha += captchaCharArray[i] + ", "
+    }
+    let audioDataUri = await getMp3DataUriFromText(spokenCatpcha)
+    // Now pass back the full payload ,
+    return {
+      audio: audioDataUri
+    }
+  } catch (e) {
+    winston.error('Error getting audio:', e)
+    return {
+      error: "unknown"
+    }
+  }
 }
 
-app.post('/captcha/audio', function (req, res) {
-  getAudio(req.body)
-    .then(function (ret) {
-      return res.send(ret)
-    })
+app.post('/captcha/audio', async function (req, res) {
+  let ret = await getAudio(req.body)
+  return res.send(ret)
 })
 
 ////////////////////////////////////////////////////////
@@ -390,40 +352,34 @@ app.post('/captcha/audio', function (req, res) {
  * Verify a JWT generated by us.
  */
 ////////////////////////////////////////////////////////
-var verifyJWT = function (token, nonce) {
+var verifyJWT = async function (token, nonce) {
   winston.debug(`verifying: ${token} against ${nonce}`)
-  return new Promise(function (resolve, reject) {
-    try {
-
-      var decoded = jwt.verify(token, SECRET)
-      winston.debug(`decoded: ` + JSON.stringify(decoded))
-
-      if (decoded.data && decoded.data.nonce === nonce) {
-        winston.debug(`Captcha Valid`)
-        resolve({
-          valid: true
-        })
-      } else {
-        winston.debug(`Captcha Invalid!`)
-        resolve({
-          valid: false
-        })
+  try {
+    var decoded = jwt.verify(token, SECRET)
+    winston.debug(`decoded: ` + JSON.stringify(decoded))
+    if (decoded.data && decoded.data.nonce === nonce) {
+      winston.debug(`Captcha Valid`)
+      return {
+        valid: true
       }
-    } catch (e) {
-      winston.error(`Token/ResourceID Verification Failed: ` + JSON.stringify(e))
-      resolve({
+    } else {
+      winston.debug(`Captcha Invalid!`)
+      return {
         valid: false
-      })
+      }
     }
-  })
+  } catch (e) {
+    winston.error(`Token/ResourceID Verification Failed: ` + JSON.stringify(e))
+    return {
+      valid: false
+    }
+  }
 }
 exports.verifyJWT = verifyJWT
 
-app.post('/verify/jwt', function (req, res) {
-  verifyJWT(req.body.token, req.body.nonce)
-    .then(function (ret) {
-      res.send(ret)
-    })
+app.post('/verify/jwt', async function (req, res) {
+  let ret = await verifyJWT(req.body.token, req.body.nonce)
+  res.send(ret)
 })
 
 ////////////////////////////////////////////////////////
@@ -433,7 +389,7 @@ app.post('/verify/jwt', function (req, res) {
 ////////////////////////////////////////////////////////
 function getMp3DataUriFromText(text) {
   winston.debug("Starting audio generation...")
-  return new Promise(function (resolve, reject) {
+  return new Promise(function (resolve) {
 
     // init wave reader, used to convert WAV to PCM
     var reader = new wav.Reader()
@@ -446,20 +402,23 @@ function getMp3DataUriFromText(text) {
 
       // Pipe Wav reader to the encoder and capture the output stream
       winston.debug("Pipe WAV reader to MP3 encoder")
-      var outputStream = reader.pipe(encoder)
 
       // As the stream is encoded, convert the mp3 array buffer chunks into base64 string with mime type
       var dataUri = "data:audio/mp3;base64,"
-      outputStream.on('data', function (arrayBuffer) {
+      encoder.on('data', function (arrayBuffer) {
         winston.debug("Encoder output received chunk of bytes, convert to base64 string")
         dataUri += arrayBuffer.toString('base64')
+        // by observation encoder hung before finish due to event loop being empty
+        // setTimeout injects an event to mitigate the issue
+        setTimeout(() => {}, 0)
       })
 
       // When encoding is complete, callback with data uri
-      outputStream.on('finish', function () {
+      encoder.on('finish', function () {
         winston.debug("Finished converting to MP3")
         resolve(dataUri)
       })
+      reader.pipe(encoder)
     })
 
     // Generate audio, Base64 encoded WAV in DataUri format including mime type header
