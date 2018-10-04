@@ -7,6 +7,7 @@ var app = require('express')()
 var jwt = require('jsonwebtoken')
 var svgCaptcha = require('svg-captcha')
 var winston = require('winston')
+const ipRangeCheck = require("ip-range-check")
 
 // requires for audio support
 var lame = require('lame')
@@ -16,6 +17,7 @@ var streamifier = require("streamifier")
 var os = require("os")
 var arrayBufferToBuffer = require('arraybuffer-to-buffer')
 
+const AUTHORIZED_RESOURCE_SERVER_IP_RANGE_LIST = process.env.AUTHORIZED_RESOURCE_SERVER_IP_RANGE_LIST || '127.0.0.1'
 var LISTEN_IP = process.env.LISTEN_IP || '0.0.0.0'
 var HOSTNAME = require('os').hostname()
 var CAPTCHA_SIGN_EXPIRY = process.env.CAPTCHA_SIGN_EXPIRY || "15" // In minutes
@@ -378,6 +380,19 @@ var verifyJWT = async function (token, nonce) {
 exports.verifyJWT = verifyJWT
 
 app.post('/verify/jwt', async function (req, res) {
+  let ipRangeArr = AUTHORIZED_RESOURCE_SERVER_IP_RANGE_LIST.split(',')
+  let allowed = false
+  for (ipRange of ipRangeArr) {
+    if (ipRangeCheck(req.ip, ipRange.trim())) {
+      allowed = true
+      break
+    }
+  }
+  if (!allowed) {
+    winston.debug(`Unauthorized access to /verify/jwt from ip ${req.ip}.`)
+    res.status(403).end()
+    return
+  }
   let ret = await verifyJWT(req.body.token, req.body.nonce)
   res.send(ret)
 })
