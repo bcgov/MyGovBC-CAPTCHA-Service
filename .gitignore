@@ -3,4 +3,4 @@
 .idea
 package-lock.json
 .env
-logs/
+logs

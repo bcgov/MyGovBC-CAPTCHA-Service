@@ -4,7 +4,7 @@
 var service 	= require ('../server.js');
 var jwt 		= require('jsonwebtoken');
 var crypto 		= require('crypto');
-var open 		= require('open');
+var open 		= require('opn');
 var path 		= require('path').basename(__dirname);
 
 var resourceID 	= crypto.randomBytes(64).toString('hex');

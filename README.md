@@ -1,5 +1,10 @@
 # MyGovBC-CAPTCHA
 
+[![Build Status](https://jenkins-gcpe-mygovbc-demo.pathfinder.gov.bc.ca/buildStatus/icon?job=gcpe-mygovbc-demo-mygovbc-captcha-service-pipeline)](https://jenkins-gcpe-mygovbc-demo.pathfinder.gov.bc.ca/job/gcpe-mygovbc-demo-mygovbc-captcha-service-pipeline/)
+
+[![Known Vulnerabilities](https://snyk.io/test/github/bcgov/MyGovBC-CAPTCHA-Service/badge.svg)](https://snyk.io/test/github/bcgov/MyGovBC-CAPTCHA-Service)
+
+
 #### A CAPTCHA microservice
 
 This project contains a microservice to enable you to easily include a CAPTCHA widget in my online digital form to protect your digital service from bots.  
@@ -15,12 +20,12 @@ This is just the service part of an overall solution, for user interface compone
 3. User responds to challenge
 4. Widget sends user response to Service
 5. Service validates the response
-6. Service returns validation result and a signed JWT containing the nonce if passes
+6. Service returns validation result and a signed JWT containing the nonce and an expiration timestamp if passes
 7. Widget displays success/failure to user
 8. User agent includes the JWT in resource server api call i.e. form submission
 9. Resource server confirms the validity of the signed JWT in one of the two ways
-    1. if sesource server holds the shared secret, then it can decode the JWT using the shared secret and compare the nonce in the decoded JWT with nonce associated with the request
-    2. call the `/verify/jwt` service API, passing JWT and nonce associated with the request. In such case resource server doesn't need to hold the shared secret.
+    1. if resource server holds the shared secret, then it can decode the JWT using the shared secret prior to JWT expiration and compare the nonce in the decoded JWT with nonce associated with the request
+    2. call the `/verify/jwt` service API, passing JWT and nonce associated with the request. In such case the resource server doesn't need to hold the shared secret, but its ip has to be in the ranges defined in the environment variable *AUTHORIZED_RESOURCE_SERVER_IP_RANGE_LIST*.
 10. Resource server allows/denies access to resource based on the outcome of the JWT validation
 
 ###### Git Checkout and initialization:
@@ -93,7 +98,7 @@ Request Type | API Endpoint | Parameters | Returns | Purpose
 ------------ | ------------- | ------------- | ------------- | -------------
 HTTP GET | / or /status | | OK | Returns "OK" if the service is running
 HTTP POST | /captcha | request body: { nonce: string } | {  "nonce": string,  "captcha": string,  validation": JSON}| Retrieve a captcha to be displayed to a user
-HTTP POST | /captcha/audio | request body: { validation: string } | {  "audio": dataUri}| Retrieve the audio for a given captcha validation object, returns MP3 in DataUri format
+HTTP POST | /captcha/audio | request body: { validation: JSON } | {  "audio": dataUri}| Retrieve the audio for a given captcha validation object, returns MP3 in DataUri format
 HTTP POST | /verify/captcha | request body: { nonce: string, answer: string, validation: JSON } | { valid: true/false, jwt: JWT } | Compare the answer to the encryptedAnswer, return a signed JWT if successful
 HTTP POST | /verify/jwt | request body: { nonce: string, token: JWT } | { valid: true/false } | Validate a signed JWT by resource server
 
