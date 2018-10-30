@@ -7,8 +7,7 @@ var props = {
   alg: 'A256GCM',
   use: 'enc'
 };
-keystore.generate("oct", 256, props).then(function (result) {
+keystore.generate("oct", 256, props).then(function (result: any) {
   // {result} is a jose.JWK.Key
-  key = result;
-  winston.info(JSON.stringify(key.toJSON(true)));
+  winston.info(JSON.stringify(result.toJSON(true)));
 });

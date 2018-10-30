@@ -5,14 +5,17 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "node",
-            "request": "launch",
-            "name": "Launch Program",
-            "program": "${workspaceFolder}\\server.js",
-            "outputCapture": "std",
-            "args": [
-                "server"
-            ]
-        }
-    ]
+        "type": "node",
+        "request": "launch",
+        "name": "Launch Program",
+        "runtimeArgs": [
+            "-r",
+            "ts-node/register"
+        ],
+        "outputCapture": "std",
+        "args": [
+            "${workspaceFolder}/src/index.ts",
+            "server"
+        ]
+    }]
 }

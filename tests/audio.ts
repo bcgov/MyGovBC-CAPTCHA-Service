@@ -41,7 +41,7 @@ var audioStream = streamifier.createReadStream(audioBuffer);
 // and start transferring the data
 audioStream.pipe(reader);
 
-function onFormat (format) {
+function onFormat (format: object) {
     console.error('WAV format: %j', format);
 
     // encoding the wave file into an MP3 is as simple as calling pipe()
@@ -50,7 +50,7 @@ function onFormat (format) {
     var outputStream = reader.pipe(encoder);
 
     var dataUri = "data:audio/mp3;base64,";
-    outputStream.on('data',function(arrayBuffer){
+    outputStream.on('data',function(arrayBuffer: Buffer){
         dataUri += arrayBuffer.toString('base64');
     });
 

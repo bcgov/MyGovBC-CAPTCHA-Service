@@ -1,8 +1,9 @@
+import { Request, Response } from "express"
+
 /*jshint node:true, esversion: 6 */
 require('dotenv').config()
 var bodyParser = require('body-parser')
 var jose = require('node-jose')
-var Buffer = require('buffer').Buffer
 var app = require('express')()
 var jwt = require('jsonwebtoken')
 var svgCaptcha = require('svg-captcha')
@@ -20,7 +21,7 @@ var arrayBufferToBuffer = require('arraybuffer-to-buffer')
 const AUTHORIZED_RESOURCE_SERVER_IP_RANGE_LIST = process.env.AUTHORIZED_RESOURCE_SERVER_IP_RANGE_LIST || '127.0.0.1'
 var LISTEN_IP = process.env.LISTEN_IP || '0.0.0.0'
 var HOSTNAME = require('os').hostname()
-var CAPTCHA_SIGN_EXPIRY = process.env.CAPTCHA_SIGN_EXPIRY || "15" // In minutes
+var CAPTCHA_SIGN_EXPIRY: number = process.env.CAPTCHA_SIGN_EXPIRY && +process.env.CAPTCHA_SIGN_EXPIRY || 15 // In minutes
 var JWT_SIGN_EXPIRY = process.env.JWT_SIGN_EXPIRY || "15" // In minutes
 var SECRET = process.env.SECRET || "defaultSecret"
 var PRIVATE_KEY = process.env.PRIVATE_KEY ? JSON.parse(process.env.PRIVATE_KEY) : {
@@ -48,7 +49,7 @@ if (process.env.NODE_ENV == 'production') {
 
 if (process.env.NODE_ENV != 'production' ||
   process.env.CORS_ALLOW_ALL == 'true') {
-  app.use(function (req, res, next) {
+  app.use(function (req: Request, res: Response, next: Function) {
     res.header("Access-Control-Allow-Origin", "*")
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept")
     next()
@@ -116,7 +117,7 @@ if (args.length == 3 && args[2] == 'server') {
  * Encryption Routines
  */
 ////////////////////////////////////////////////////////
-async function decrypt(body, private_key) {
+async function decrypt(body: object, private_key: object) {
   winston.debug(`to decrypt body: ` + JSON.stringify(body))
   try {
     let res = await jose.JWK.asKey(private_key, "json")
@@ -131,7 +132,7 @@ async function decrypt(body, private_key) {
   }
 }
 
-async function encrypt(body) {
+async function encrypt(body: object) {
   winston.debug(`encrypt: ` + JSON.stringify(body))
   let buff = Buffer.from(JSON.stringify(body))
   try {
@@ -151,7 +152,27 @@ async function encrypt(body) {
  * Get a new captcha
  */
 ////////////////////////////////////////////////////////
-let getCaptcha = async function (payload) {
+interface GetCaptchaRequest {
+  nonce: string
+}
+
+interface UnencryptedValidation {
+  nonce: string,
+  answer: string,
+  expiry: number,
+}
+
+export interface ValidCaptchaResponse {
+  nonce: string,
+  captcha: string,
+  validation: object
+}
+
+export interface InvalidCaptchaResponse {
+  valid: boolean
+}
+
+let getCaptcha = async function (payload: GetCaptchaRequest): Promise<ValidCaptchaResponse | InvalidCaptchaResponse> {
   winston.debug(`getCaptcha: ${payload.nonce}`)
   var captcha = svgCaptcha.create({
     size: 6, // size of random string
@@ -170,13 +191,13 @@ let getCaptcha = async function (payload) {
   var captchaAudioText = "Type in the text box the following: " + captcha.text
 
   // add answer, nonce and expiry to body
-  var body = {
+  var body: UnencryptedValidation = {
     nonce: payload.nonce,
     answer: captcha.text,
     expiry: Date.now() + (CAPTCHA_SIGN_EXPIRY * 60000)
   }
   try {
-    let validation = await encrypt(body, PRIVATE_KEY)
+    let validation = await encrypt(body)
     if (validation === "") {
       // Error
       winston.error(`Validation Failed`)
@@ -202,7 +223,7 @@ let getCaptcha = async function (payload) {
 }
 exports.getCaptcha = getCaptcha
 
-app.post('/captcha', async function (req, res) {
+app.post('/captcha', async function (req: Request, res: Response) {
   let captcha = await getCaptcha(req.body)
   winston.debug(`returning: ` + JSON.stringify(captcha))
   return res.send(captcha)
@@ -215,7 +236,22 @@ app.post('/captcha', async function (req, res) {
  * If successful, return a signed jwt by us.
  */
 ////////////////////////////////////////////////////////
-var verifyCaptcha = async function (payload) {
+interface VerifyCaptchaRequest {
+  answer: string,
+  nonce: string,
+  validation: object,
+}
+
+export interface VerifyCaptchaValidResponse {
+  valid: boolean,
+  jwt: string
+}
+
+export interface VerifyCaptchaInvalidResponse {
+  valid: boolean
+}
+
+var verifyCaptcha = async function (payload: VerifyCaptchaRequest): Promise<VerifyCaptchaInvalidResponse | VerifyCaptchaValidResponse> {
   winston.debug(`incoming payload: ` + JSON.stringify(payload))
   var validation = payload.validation
   var answer = payload.answer
@@ -234,8 +270,8 @@ var verifyCaptcha = async function (payload) {
         nonce: nonce
       }
     }, SECRET, {
-      expiresIn: JWT_SIGN_EXPIRY + 'm'
-    })
+        expiresIn: JWT_SIGN_EXPIRY + 'm'
+      })
     return {
       valid: true,
       jwt: token
@@ -243,7 +279,7 @@ var verifyCaptcha = async function (payload) {
   }
 
   // Normal mode, decrypt token
-  let body = await decrypt(validation, PRIVATE_KEY)
+  let body: UnencryptedValidation = await decrypt(validation, PRIVATE_KEY)
   winston.debug(`verifyCaptcha decrypted: ` + JSON.stringify(body))
   if (body !== null) {
 
@@ -260,8 +296,8 @@ var verifyCaptcha = async function (payload) {
               nonce: nonce
             }
           }, SECRET, {
-            expiresIn: JWT_SIGN_EXPIRY + 'm'
-          })
+              expiresIn: JWT_SIGN_EXPIRY + 'm'
+            })
           return {
             valid: true,
             jwt: token
@@ -297,7 +333,7 @@ var verifyCaptcha = async function (payload) {
 }
 exports.verifyCaptcha = verifyCaptcha
 
-app.post('/verify/captcha', async function (req, res) {
+app.post('/verify/captcha', async function (req: Request, res: Response) {
   let ret = await verifyCaptcha(req.body)
   return res.send(ret)
 })
@@ -307,7 +343,11 @@ app.post('/verify/captcha', async function (req, res) {
  * Get Audio
  */
 ////////////////////////////////////////////////////////
-var getAudio = async function (body) {
+interface GetAudioRequestBody {
+  validation: object,
+}
+
+var getAudio = async function (body: GetAudioRequestBody) {
   winston.debug(`getting audio for`, body)
   try {
     // Ensure audio is enabled.
@@ -322,11 +362,11 @@ var getAudio = async function (body) {
     var validation = body.validation
 
     // decrypt payload to get captcha text
-    body = await decrypt(validation, PRIVATE_KEY)
+    let decryptedBody = await decrypt(validation, PRIVATE_KEY)
     winston.debug('get audio decrypted body', body)
 
     // Insert leading text and commas to slow down reader
-    var captchaCharArray = body.answer.toString().split("")
+    var captchaCharArray = decryptedBody.answer.toString().split("")
     var spokenCatpcha = "Please type in following letters or numbers: "
     for (var i = 0; i < captchaCharArray.length; i++) {
       spokenCatpcha += captchaCharArray[i] + ", "
@@ -344,7 +384,7 @@ var getAudio = async function (body) {
   }
 }
 
-app.post('/captcha/audio', async function (req, res) {
+app.post('/captcha/audio', async function (req: Request, res: Response) {
   let ret = await getAudio(req.body)
   return res.send(ret)
 })
@@ -354,7 +394,10 @@ app.post('/captcha/audio', async function (req, res) {
  * Verify a JWT generated by us.
  */
 ////////////////////////////////////////////////////////
-var verifyJWT = async function (token, nonce) {
+export interface VerifyJWTResponse {
+  valid: boolean
+}
+var verifyJWT = async function (token: string, nonce: string): Promise<VerifyJWTResponse> {
   winston.debug(`verifying: ${token} against ${nonce}`)
   try {
     var decoded = jwt.verify(token, SECRET)
@@ -379,10 +422,10 @@ var verifyJWT = async function (token, nonce) {
 }
 exports.verifyJWT = verifyJWT
 
-app.post('/verify/jwt', async function (req, res) {
+app.post('/verify/jwt', async function (req: Request, res: Response) {
   let ipRangeArr = AUTHORIZED_RESOURCE_SERVER_IP_RANGE_LIST.split(',')
   let allowed = false
-  for (ipRange of ipRangeArr) {
+  for (let ipRange of ipRangeArr) {
     if (ipRangeCheck(req.ip, ipRange.trim())) {
       allowed = true
       break
@@ -402,7 +445,7 @@ app.post('/verify/jwt', async function (req, res) {
  * Audio routines
  */
 ////////////////////////////////////////////////////////
-function getMp3DataUriFromText(text) {
+function getMp3DataUriFromText(text: string) {
   winston.debug("Starting audio generation...")
   return new Promise(function (resolve) {
 
@@ -410,7 +453,7 @@ function getMp3DataUriFromText(text) {
     var reader = new wav.Reader()
 
     // we have to wait for the "format" event before we can start encoding
-    reader.on('format', function (format) {
+    reader.on('format', function (format: object) {
       // init encoder
       winston.debug("Init mp3 encoder")
       var encoder = new lame.Encoder(format)
@@ -420,12 +463,12 @@ function getMp3DataUriFromText(text) {
 
       // As the stream is encoded, convert the mp3 array buffer chunks into base64 string with mime type
       var dataUri = "data:audio/mp3;base64,"
-      encoder.on('data', function (arrayBuffer) {
+      encoder.on('data', function (arrayBuffer: Buffer) {
         winston.debug("Encoder output received chunk of bytes, convert to base64 string")
         dataUri += arrayBuffer.toString('base64')
         // by observation encoder hung before finish due to event loop being empty
         // setTimeout injects an event to mitigate the issue
-        setTimeout(() => {}, 0)
+        setTimeout(() => { }, 0)
       })
 
       // When encoding is complete, callback with data uri
@@ -456,6 +499,6 @@ function getMp3DataUriFromText(text) {
   })
 }
 
-app.get(/^\/(status)?$/, function (req, res) {
+app.get(/^\/(status)?$/, function (req: Request, res: Response) {
   res.send("OK")
 })
