@@ -366,7 +366,7 @@ var getAudio = async function (body: GetAudioRequestBody) {
     winston.debug('get audio decrypted body', body)
 
     // Insert leading text and commas to slow down reader
-    var captchaCharArray = decryptedBody.answer.toString().split("")
+    var captchaCharArray = decryptedBody.answer.toString().toLowerCase().split("")
     var spokenCatpcha = "Please type in following letters or numbers: "
     for (var i = 0; i < captchaCharArray.length; i++) {
       spokenCatpcha += captchaCharArray[i] + ", "
