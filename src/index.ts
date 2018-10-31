@@ -462,8 +462,11 @@ function getMp3DataUriFromText(text: string) {
       winston.debug("Pipe WAV reader to MP3 encoder")
 
       // As the stream is encoded, convert the mp3 array buffer chunks into base64 string with mime type
-      var dataUri = "data:audio/mp3;base64,"
+      var dataUri: string | undefined = "data:audio/mp3;base64,"
       encoder.on('data', function (arrayBuffer: Buffer) {
+        if (!dataUri) {
+          return
+        }
         winston.debug("Encoder output received chunk of bytes, convert to base64 string")
         dataUri += arrayBuffer.toString('base64')
         // by observation encoder hung before finish due to event loop being empty
@@ -475,6 +478,7 @@ function getMp3DataUriFromText(text: string) {
       encoder.on('finish', function () {
         winston.debug("Finished converting to MP3")
         resolve(dataUri)
+        dataUri = undefined
       })
       reader.pipe(encoder)
     })
