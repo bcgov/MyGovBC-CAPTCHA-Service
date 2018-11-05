@@ -20,7 +20,7 @@
     "ip-range-check": "0.0.2",
     "jsonwebtoken": "^8.0.0",
     "lame": "^1.2.4",
-    "mespeak": "^2.0.1",
+    "mespeak": "f-w/mespeak",
     "node-jose": "^1.0.0",
     "os": "^0.1.1",
     "streamifier": "^0.1.1",
