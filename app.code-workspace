@@ -4,7 +4,7 @@
 			"path": "."
 		},
 		{
-			"path": "../mespeak"
+			"path": "../text2wav.node.js"
 		}
 	],
 	"settings": {}

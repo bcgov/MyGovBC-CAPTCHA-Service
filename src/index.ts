@@ -2,7 +2,7 @@ import { Request, Response } from "express"
 
 /*jshint node:true, esversion: 6 */
 require('dotenv').config()
-var bodyParser = require('body-parser')
+import bodyParser = require('body-parser')
 var jose = require('node-jose')
 var app = require('express')()
 var jwt = require('jsonwebtoken')
@@ -13,9 +13,8 @@ const ipRangeCheck = require("ip-range-check")
 // requires for audio support
 var lame = require('lame')
 var wav = require('wav')
-var meSpeak = require("mespeak")
+import text2wav = require('text2wav')
 var streamifier = require("streamifier")
-var os = require("os")
 var arrayBufferToBuffer = require('arraybuffer-to-buffer')
 
 const AUTHORIZED_RESOURCE_SERVER_IP_RANGE_LIST = process.env.AUTHORIZED_RESOURCE_SERVER_IP_RANGE_LIST || '127.0.0.1'
@@ -81,10 +80,6 @@ if (process.env.WINSTON_PORT) {
  * App Startup
  */
 ////////////////////////////////////////////////////////
-
-// Init audio settings
-meSpeak.loadConfig(require("mespeak/src/mespeak_config.json"))
-meSpeak.loadVoice(require("mespeak/voices/en/en-us.json"))
 
 // create the Encoder instance
 var encoder = new lame.Encoder({
@@ -366,7 +361,7 @@ var getAudio = async function (body: GetAudioRequestBody) {
     winston.debug('get audio decrypted body', body)
 
     // Insert leading text and commas to slow down reader
-    var captchaCharArray = decryptedBody.answer.toString().toLowerCase().split("")
+    var captchaCharArray = decryptedBody.answer.toString().split("")
     var spokenCatpcha = "Please type in following letters or numbers: "
     for (var i = 0; i < captchaCharArray.length; i++) {
       spokenCatpcha += captchaCharArray[i] + ", "
@@ -447,7 +442,7 @@ app.post('/verify/jwt', async function (req: Request, res: Response) {
 ////////////////////////////////////////////////////////
 function getMp3DataUriFromText(text: string) {
   winston.debug("Starting audio generation...")
-  return new Promise(function (resolve) {
+  return new Promise(async function (resolve) {
 
     // init wave reader, used to convert WAV to PCM
     var reader = new wav.Reader()
@@ -485,9 +480,7 @@ function getMp3DataUriFromText(text: string) {
 
     // Generate audio, Base64 encoded WAV in DataUri format including mime type header
     winston.debug("Generate speach as WAV in ArrayBuffer")
-    var audioArrayBuffer = meSpeak.speak(text, {
-      rawdata: "ArrayBuffer"
-    })
+    var audioArrayBuffer = await text2wav(text)
 
     // convert to buffer
     winston.debug("Convert arraybuffer to buffer")
