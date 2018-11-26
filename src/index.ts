@@ -340,9 +340,17 @@ app.post('/verify/captcha', async function (req: Request, res: Response) {
 ////////////////////////////////////////////////////////
 interface GetAudioRequestBody {
   validation: object,
+  translation?: string | boolean,
 }
 
-var getAudio = async function (body: GetAudioRequestBody) {
+const voicePromptLanguageMap: { [index: string]: string } = {
+  en: 'Please type in following letters or numbers', // english
+  fr: 'Veuillez saisir les lettres ou les chiffres suivants', // french
+  pa: 'ਕਿਰਪਾ ਕਰਕੇ ਹੇਠ ਲਿਖੇ ਅੱਖਰ ਜਾਂ ਨੰਬਰ ਟਾਈਪ ਕਰੋ', // punjabi
+  zh: '请输入以下英文字母或数字', // mandarin chinese
+}
+
+var getAudio = async function (body: GetAudioRequestBody, req?: Request) {
   winston.debug(`getting audio for`, body)
   try {
     // Ensure audio is enabled.
@@ -362,11 +370,25 @@ var getAudio = async function (body: GetAudioRequestBody) {
 
     // Insert leading text and commas to slow down reader
     var captchaCharArray = decryptedBody.answer.toString().split("")
-    var spokenCatpcha = "Please type in following letters or numbers: "
+    let language = 'en'
+    if (body.translation) {
+      if (typeof body.translation == 'string') {
+        if (voicePromptLanguageMap.hasOwnProperty(<string>body.translation)) {
+          language = <string>body.translation
+        }
+      }
+      else if (body.translation === true && req && req.headers['accept-language']) {
+        let lang = (<string>req.headers['accept-language']).split(',').map(e => e.split(';')[0].split('-')[0]).find(e => voicePromptLanguageMap.hasOwnProperty(e))
+        if (lang) {
+          language = lang
+        }
+      }
+    }
+    var spokenCatpcha = voicePromptLanguageMap[language] + ": "
     for (var i = 0; i < captchaCharArray.length; i++) {
       spokenCatpcha += captchaCharArray[i] + ", "
     }
-    let audioDataUri = await getMp3DataUriFromText(spokenCatpcha)
+    let audioDataUri = await getMp3DataUriFromText(spokenCatpcha, language)
     // Now pass back the full payload ,
     return {
       audio: audioDataUri
@@ -380,7 +402,7 @@ var getAudio = async function (body: GetAudioRequestBody) {
 }
 
 app.post('/captcha/audio', async function (req: Request, res: Response) {
-  let ret = await getAudio(req.body)
+  let ret = await getAudio(req.body, req)
   return res.send(ret)
 })
 
@@ -440,7 +462,7 @@ app.post('/verify/jwt', async function (req: Request, res: Response) {
  * Audio routines
  */
 ////////////////////////////////////////////////////////
-function getMp3DataUriFromText(text: string) {
+function getMp3DataUriFromText(text: string, language: string = 'en') {
   winston.debug("Starting audio generation...")
   return new Promise(async function (resolve) {
 
@@ -480,7 +502,7 @@ function getMp3DataUriFromText(text: string) {
 
     // Generate audio, Base64 encoded WAV in DataUri format including mime type header
     winston.debug("Generate speach as WAV in ArrayBuffer")
-    var audioArrayBuffer = await text2wav(text)
+    let audioArrayBuffer = await text2wav(text, { voice: language })
 
     // convert to buffer
     winston.debug("Convert arraybuffer to buffer")

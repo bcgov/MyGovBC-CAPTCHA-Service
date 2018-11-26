@@ -94,13 +94,37 @@ The tests cover the following cases:
 
 
 ###### API Specification:
-Request Type | API Endpoint | Parameters | Returns | Purpose
------------- | ------------- | ------------- | ------------- | -------------
-HTTP GET | / or /status | | OK | Returns "OK" if the service is running
-HTTP POST | /captcha | request body: { nonce: string } | {  "nonce": string,  "captcha": string,  validation": JSON}| Retrieve a captcha to be displayed to a user
-HTTP POST | /captcha/audio | request body: { validation: JSON } | {  "audio": dataUri}| Retrieve the audio for a given captcha validation object, returns MP3 in DataUri format
-HTTP POST | /verify/captcha | request body: { nonce: string, answer: string, validation: JSON } | { valid: true/false, jwt: JWT } | Compare the answer to the encryptedAnswer, return a signed JWT if successful
-HTTP POST | /verify/jwt | request body: { nonce: string, token: JWT } | { valid: true/false } | Validate a signed JWT by resource server
+
+* GET / or /status 
+    * returns: "OK" if the service is running
+* POST /captcha
+    * input: request body: { nonce: \<string\> }
+    * returns: {nonce: \<string\>,  captcha: \<string\>,  validation: \<JSON\>}
+    
+    Retrieve a captcha to be displayed to a user
+* POST /captcha/audio
+    * input: request body: { validation: \<JSON\> [, translation: \<string\>\|true] }
+    * returns: {audio: \<dataUri\>}
+    
+    Retrieve the audio for a given captcha validation object, returns MP3 in DataUri format. The audio prompt is spoken in English unless *transaltion* is specified. *transaltion* can be either a string of one of following supported language acronyms    
+    
+    * *en* (English)
+    * *fr* (French)
+    * *pa* (Punjabi)
+    * *zh* (Mandarin Chinese)
+    
+    or the boolean value of *true*. If *transaltion* is set to *true*, then the first language set in the http *Accept-Language* request header matching the above list is chosen. If there is no match, then fall backs to English.
+        
+* POST /verify/captcha
+    * input: request body: { nonce: \<string\>, answer: \<string\>, validation: \<JSON\> }
+    * returns: { valid: true\|false, jwt: \<JWT\> }
+    
+    Compare the answer to the encryptedAnswer, return a signed JWT if the answer if valid
+* POST /verify/jwt
+    * input: request body: { nonce: \<string\>, token: \<JWT\> }
+    * returns: { valid: true\|false } 
+    
+    Validate a signed JWT by resource server
 
 #### API Demo
 You can try it out the API for yourself at our demo environment by following the above API specs:

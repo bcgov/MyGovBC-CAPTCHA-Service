@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "../text2wav.node.js"
+		},
+		{
+			"path": "../MyGovBC-CAPTCHA-Widget"
 		}
 	],
 	"settings": {}
