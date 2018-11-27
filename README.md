@@ -129,7 +129,7 @@ The tests cover the following cases:
 #### API Demo
 You can try it out the API for yourself at our demo environment by following the above API specs:
 
-https://captcha-demo.pathfinder.gov.bc.ca/
+https://captcha-demo.pathfinder.gov.bc.ca/captcha
 
 
 #### Build/Deploy Setup

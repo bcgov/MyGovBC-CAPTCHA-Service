@@ -8,7 +8,10 @@
 		},
 		{
 			"path": "../MyGovBC-CAPTCHA-Widget"
-		}
+		},
+		{
+			"path": "../angular-scaffold-captcha"
+		},
 	],
 	"settings": {}
 }
