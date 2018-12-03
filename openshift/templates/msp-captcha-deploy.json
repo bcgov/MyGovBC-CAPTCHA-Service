@@ -93,6 +93,10 @@
                   {
                     "name": "CORS_ALLOW_ALL",
                     "value": "${CORS_ALLOW_ALL}"
+                  },
+                  {
+                    "name": "JWT_SIGN_EXPIRY",
+                    "value": "${JWT_SIGN_EXPIRY}"
                   }
                 ],
                 "resources": {
@@ -269,6 +273,12 @@
       "displayName": "CORS_ALLOW_ALL",
       "name": "CORS_ALLOW_ALL",
       "required": false
+    },
+    {
+      "description": "Captcha expiry time in minutes",
+      "displayName": "JWT_SIGN_EXPIRY",
+      "name": "JWT_SIGN_EXPIRY",
+      "value": "60"
     }
   ]
 }

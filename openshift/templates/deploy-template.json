@@ -315,6 +315,7 @@
       "description": "Time in minutes you want to automatically expire the Service JWT returned to clients (default: 15min)",
       "displayName": "JWT Sign Expiry",
       "name": "JWT_SIGN_EXPIRY",
+      "value": "15",
       "required": false
     },
     {
