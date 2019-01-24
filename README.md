@@ -106,14 +106,14 @@ The tests cover the following cases:
     * input: request body: { validation: \<JSON\> [, translation: \<string\>\|true] }
     * returns: {audio: \<dataUri\>}
     
-    Retrieve the audio for a given captcha validation object, returns MP3 in DataUri format. The audio prompt is spoken in English unless *transaltion* is specified. *transaltion* can be either a string of one of following supported language acronyms    
+    Retrieve the audio for a given captcha validation object, returns MP3 in DataUri format. The audio prompt is spoken in English unless *translation* is specified. *translation* can be either a string of one of following supported language acronyms    
     
     * *en* (English)
     * *fr* (French)
     * *pa* (Punjabi)
     * *zh* (Mandarin Chinese)
     
-    or the boolean value of *true*. If *transaltion* is set to *true*, then the first language set in the http *Accept-Language* request header matching the above list is chosen. If there is no match, then fall backs to English.
+    or the boolean value of *true*. If *translation* is set to *true*, then the first language set in the http *Accept-Language* request header matching the above list is chosen. If there is no match, then fall backs to English.
         
 * POST /verify/captcha
     * input: request body: { nonce: \<string\>, answer: \<string\>, validation: \<JSON\> }
