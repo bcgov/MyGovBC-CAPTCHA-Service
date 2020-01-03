@@ -20,8 +20,8 @@ var arrayBufferToBuffer = require('arraybuffer-to-buffer')
 const AUTHORIZED_RESOURCE_SERVER_IP_RANGE_LIST = process.env.AUTHORIZED_RESOURCE_SERVER_IP_RANGE_LIST || '127.0.0.1'
 var LISTEN_IP = process.env.LISTEN_IP || '0.0.0.0'
 var HOSTNAME = require('os').hostname()
-var CAPTCHA_SIGN_EXPIRY: number = process.env.CAPTCHA_SIGN_EXPIRY && +process.env.CAPTCHA_SIGN_EXPIRY || 15 // In minutes
-var JWT_SIGN_EXPIRY = process.env.JWT_SIGN_EXPIRY || "15" // In minutes
+var CAPTCHA_SIGN_EXPIRY: number = process.env.CAPTCHA_SIGN_EXPIRY && +process.env.CAPTCHA_SIGN_EXPIRY || 30 // In minutes
+var JWT_SIGN_EXPIRY = process.env.JWT_SIGN_EXPIRY || "30" // In minutes
 var SECRET = process.env.SECRET || "defaultSecret"
 var PRIVATE_KEY = process.env.PRIVATE_KEY ? JSON.parse(process.env.PRIVATE_KEY) : {
   kty: 'oct',
