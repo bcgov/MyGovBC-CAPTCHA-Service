@@ -1,11 +1,12 @@
 {
   "name": "mygovbc-captcha-service",
-  "version": "7.2.0",
+  "version": "7.3.0",
   "description": "A reusable, secure and reliable CAPTCHA microservice for service providers to use within online digital services.",
   "main": "lib/index.js",
   "scripts": {
     "test": "ts-node tests/test",
     "start": "ts-node src/index server",
+    "preinstall": "rm -rf node_modules/ lib/",
     "install": "tsc -p .",
     "generate-private-key": "ts-node util_jwks_gen.ts"
   },
@@ -51,9 +52,6 @@
     "url": "https://github.com/bcgov/MyGovBC-CAPTCHA-Service/issues"
   },
   "homepage": "https://github.com/bcgov/MyGovBC-CAPTCHA-Service#readme",
-  "engines": {
-    "node": ">=8.2.1"
-  },
   "devDependencies": {
     "opn": "^5.4.0"
   }
