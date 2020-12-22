@@ -1,7 +1,6 @@
 # MyGovBC-CAPTCHA
-
+![img](https://img.shields.io/badge/Lifecycle-Dormant-ff7f2a)
 [![Build Status](https://jenkins-gcpe-mygovbc-demo.pathfinder.gov.bc.ca/buildStatus/icon?job=gcpe-mygovbc-demo-mygovbc-captcha-service-pipeline)](https://jenkins-gcpe-mygovbc-demo.pathfinder.gov.bc.ca/job/gcpe-mygovbc-demo-mygovbc-captcha-service-pipeline/)
-
 [![Known Vulnerabilities](https://snyk.io/test/github/bcgov/MyGovBC-CAPTCHA-Service/badge.svg)](https://snyk.io/test/github/bcgov/MyGovBC-CAPTCHA-Service)
 
 
